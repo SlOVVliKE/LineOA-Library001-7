@@ -1,0 +1,29 @@
+# ---------- ความลับ: ห้าม commit เด็ดขาด ----------
+.env
+.env.local
+.env*.local
+*.env.local
+book-shop/supabase/.temp/
+supabase/.temp/
+
+# ---------- ของที่สร้างใหม่ได้ ----------
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# ---------- ระบบปฏิบัติการ / เครื่องมือ ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+
+# ---------- ไฟล์ทดสอบชั่วคราว ----------
+test-slip.png
+*.bak
