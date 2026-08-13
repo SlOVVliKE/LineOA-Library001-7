@@ -9,16 +9,20 @@
 #  keeps its OpenNext adapter updated. Pinning it means missing
 #  fixes for future Next.js releases.
 #
-#  ห้ามใส่ publish = ".next" เด็ดขาด
-#  Next.js บน Netlify เป็น zero-config — adapter จะกำหนดโฟลเดอร์เผยแพร่เอง
-#  ถ้าเราไปตั้ง publish ทับ Netlify จะถือว่านี่คือเว็บ static ธรรมดา
-#  แล้วเสิร์ฟไฟล์ดิบใน .next ออกไปตรงๆ ซึ่งไม่มี index.html → 404 ทุกหน้า
-#  และไม่มีการสร้าง server function ให้ด้วย (เคยพลาดมาแล้วรอบหนึ่ง)
+#  publish = ".next" จำเป็นเมื่อใช้ base
+#  ถ้าไม่ตั้ง publish จะ default เป็นค่าเดียวกับ base แล้ว adapter จะ error ว่า
+#  "Your publish directory cannot be the same as the base directory"
+#
+#  หมายเหตุจากที่เคยพลาด: ถ้าเว็บขึ้น 404 ทุกหน้าและ Functions มีแค่ cron
+#  ปัญหาไม่ได้อยู่ที่ไฟล์นี้ แต่อยู่ที่ Netlify UI → Build settings → Runtime
+#  ต้องตั้งเป็น "Next.js" ถ้าเป็น "Not set" adapter จะไม่ทำงานเลย
+#  (เกิดขึ้นเพราะตอนสร้างโปรเจกต์ Netlify มองที่รากของ repo ซึ่งไม่มี package.json)
 # ============================================================
 
 [build]
   base = "book-shop"
   command = "npm run build"
+  publish = ".next"
 
 # supabase-js ต้องการ Node 22 ขึ้นไป (Node 20 ขึ้น EBADENGINE ตอน install)
 [build.environment]
