@@ -1,0 +1,30 @@
+# ============================================================
+#  Netlify configuration
+#
+#  base = "book-shop"  --> the Next.js app lives in a subfolder,
+#  not at the repo root. Without this, Netlify finds no
+#  package.json and deploys an empty site.
+#
+#  No plugin entry on purpose: Netlify auto-detects Next.js and
+#  keeps its OpenNext adapter updated. Pinning it means missing
+#  fixes for future Next.js releases.
+# ============================================================
+
+[build]
+  base = "book-shop"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# ---------- scheduled functions (safety net only) ----------
+# Notifications are sent immediately when an admin changes an order
+# status, so these schedules are not what customers wait on. They
+# exist to retry anything that failed at that moment, e.g. LINE
+# being briefly unreachable.
+[functions."cron-notifications"]
+  schedule = "0 * * * *"
+
+[functions."cron-expire-reservations"]
+  schedule = "20 3 * * *"

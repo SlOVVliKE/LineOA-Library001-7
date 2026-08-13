@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
+import { drainNotificationsSafely } from '@/lib/line/notify'
 
 export type PreorderState = { ok: boolean; message?: string }
 
@@ -25,6 +26,8 @@ export async function fulfillQueue(bookId: string): Promise<PreorderState> {
   if (error) return { ok: false, message: error.message }
 
   const filled = Number(data ?? 0)
+  if (filled > 0) await drainNotificationsSafely(50)
+
   revalidatePath('/admin/preorders')
   revalidatePath('/admin/orders')
   revalidatePath('/admin/stock')
@@ -40,6 +43,8 @@ export async function cancelPreorder(orderId: string): Promise<PreorderState> {
 
   const { error } = await supabase.rpc('fn_cancel_preorder', { p_order_id: orderId })
   if (error) return { ok: false, message: error.message }
+
+  await drainNotificationsSafely()
 
   revalidatePath('/admin/preorders')
   revalidatePath('/admin/orders')

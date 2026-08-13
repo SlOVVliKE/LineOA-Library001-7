@@ -9,6 +9,7 @@ supabase/.temp/
 # ---------- ของที่สร้างใหม่ได้ ----------
 node_modules/
 .next/
+.netlify/
 out/
 build/
 dist/

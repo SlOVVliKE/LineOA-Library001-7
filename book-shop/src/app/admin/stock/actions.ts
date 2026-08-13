@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { receiveStock, adjustStock } from '@/lib/inventory/fifo'
+import { drainNotificationsSafely } from '@/lib/line/notify'
 
 export type ActionState = { ok: boolean; message?: string }
 
@@ -54,6 +55,9 @@ export async function receiveStockAction(
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ' }
   }
+
+  // รับของเข้าอาจจ่ายคิวสั่งจองให้อัตโนมัติ → มีแจ้งเตือน "ของที่จองเข้าแล้ว" รออยู่ในคิว
+  await drainNotificationsSafely(50)
 
   const landed = d.unit_cost + d.shipping_cost / d.qty
   revalidatePath('/admin/stock')

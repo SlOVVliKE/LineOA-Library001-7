@@ -35,7 +35,7 @@ npm run setup
 ```
 
 สคริปต์จะทำให้ทั้งหมดนี้เอง — ติดตั้ง dependency → สร้าง config ของ Supabase →
-เปิดฐานข้อมูลใน Docker → สร้างตารางทั้ง 16 migration → ใส่ข้อมูลตัวอย่าง → เขียน `.env.local` ให้
+เปิดฐานข้อมูลใน Docker → สร้างตารางทั้ง 17 migration → ใส่ข้อมูลตัวอย่าง → เขียน `.env.local` ให้
 
 > **ครั้งแรกใช้เวลา 3–8 นาที** เพราะต้องโหลด Docker image ครั้งเดียว ครั้งต่อไปจะเร็วมาก
 
@@ -162,7 +162,7 @@ where u.auth_user_id = '<auth-uid-จาก-dashboard>' and r.code = 'owner';
 
 **งวดที่ 1 — สต็อกและต้นทุน**
 
-- migration ทั้ง 16 ไฟล์ + seed ลงครบ ไม่มี error
+- migration ทั้ง 17 ไฟล์ + seed ลงครบ ไม่มี error
 - หน้าภาพรวมอ่านข้อมูลจริง: 67 เล่ม · มูลค่าทุน ฿8,355.00 (ตรงกับที่คำนวณมือ)
 - **FIFO** — ตัด 25 เล่มจากหนังสือที่มี 2 ล็อต ระบบตัดล็อตเก่าหมด 20 เล่ม @฿130
   แล้วต่อด้วยล็อตใหม่ 5 เล่ม @฿120 → COGS ฿3,200 ตรงกับ `tests/money.test.ts`
@@ -193,7 +193,7 @@ where u.auth_user_id = '<auth-uid-จาก-dashboard>' and r.code = 'owner';
 | ส่วน | สถานะ |
 |---|---|
 | โครงโปรเจกต์ Next.js 15 + TypeScript + Tailwind | ✅ |
-| Database schema ครบทั้งระบบ (16 migrations) | ✅ |
+| Database schema ครบทั้งระบบ (17 migrations) | ✅ |
 | ระบบสิทธิ์ RBAC 5 role + RLS ทุกตาราง | ✅ |
 | จัดการหนังสือ (เพิ่ม/แก้/ค้นหา/รายละเอียด) | ✅ |
 | รับสินค้าเข้า + คำนวณต้นทุนจริงต่อเล่ม | ✅ |
@@ -211,11 +211,13 @@ where u.auth_user_id = '<auth-uid-จาก-dashboard>' and r.code = 'owner';
 | **ระบบสั่งจอง: คิว · จ่ายของอัตโนมัติ · เติมต้นทุนย้อนหลัง** | ✅ |
 | **มัดจำ + เก็บส่วนที่เหลือตอนของเข้า** | ✅ |
 | PromptPay QR | 🔧 ใส่ `PROMPTPAY_ID` แล้วใช้ได้ทันที |
-| LINE LIFF login | 🔧 ใส่ `NEXT_PUBLIC_LIFF_ID` + `LINE_CHANNEL_ID` แล้วใช้ได้ทันที |
+| **LINE: webhook + บอทตอบอัตโนมัติ + FAQ** | ✅ |
+| **แจ้งเตือน LINE 7 แบบ (Flex Message) + คิวส่งซ้ำได้** | ✅ |
+| **Rich Menu 6 ช่อง (สคริปต์สร้างให้)** | ✅ |
+| LINE LIFF login | ✅ ใส่ `NEXT_PUBLIC_LIFF_ID` แล้วใช้ได้ทันที |
 | Adapter ขนส่ง (โครง Flash + J&T) | 🔧 รอ API key — ตอนนี้กรอกเลขพัสดุเอง |
 | ตรวจสลิปอัตโนมัติ (SlipOK/EasySlip) | ⬜ งวดถัดไป |
 | Sync สต็อก Shopee/Lazada | ⬜ งวดถัดไป |
-| แจ้งเตือนผ่าน LINE + Rich Menu | ⬜ งวดถัดไป |
 
 ---
 
@@ -292,7 +294,24 @@ RLS ปิด `purchase_lots` และรายงานกำไรไว้�
 **ไม่หัก `safety_buffer` ตอนจ่ายให้คิว** เพราะคนสั่งจองคือลูกค้าที่จ่ายเงินมาแล้ว
 ต้องได้ก่อนลูกค้าหน้าร้านที่ยังไม่ได้สั่ง
 
-### 9. ระวังเงื่อนไขใน ON ของ LEFT JOIN
+### 9. แจ้งเตือนใช้ trigger ไม่ใช่เรียกจากโค้ดแอป
+
+สถานะออเดอร์ถูกเปลี่ยนจากหลายที่ — ยืนยันเงิน, จ่ายของตามคิว, บันทึกพัสดุ, ยกเลิก
+ถ้าให้แต่ละที่เรียก push เอง จะมีวันที่ลืมสักที่แล้วลูกค้าไม่ได้รับแจ้งโดยไม่มีใครรู้
+
+`trg_notify_order_status` จึงเป็นคนบันทึกลงตาราง `notifications` ตอนสถานะเปลี่ยนจริงในฐานข้อมูล
+แล้ว cron ค่อยระบายคิว — ส่งพลาดก็ลองใหม่ได้ 3 ครั้ง และเห็นสาเหตุที่เมนู "แจ้งเตือน"
+
+**ใช้ reply ให้มากที่สุด ไม่ใช่ push** — reply (ตอบหลังลูกค้าทัก) ไม่นับโควตา ส่วน push นับ
+บอททั้งหมดจึงใช้ reply มีแค่แจ้งเตือนสถานะที่จำเป็นต้อง push
+
+### 10. Webhook ต้องตรวจลายเซ็นก่อนเสมอ
+
+`/api/line/webhook` เปิดสาธารณะ ไม่มี auth อื่นป้องกัน — ลายเซ็น HMAC-SHA256 คือด่านเดียว
+ถ้าไม่ตรวจ ใครก็ยิง request ปลอมมาสั่งให้ระบบทำอะไรก็ได้ในนามลูกค้าคนอื่น
+และต้องเทียบแบบเวลาคงที่ (`timingSafeEqual`) ไม่ใช่ `===`
+
+### 11. ระวังเงื่อนไขใน ON ของ LEFT JOIN
 
 `... left join orders o on o.id = oi.order_id and o.status = 'paid'`
 ไม่ได้กรองแถวทิ้ง แค่ทำให้คอลัมน์ของ `o` เป็น null — `sum(oi.qty)` ยังนับแถวนั้นอยู่
@@ -329,6 +348,7 @@ supabase/
     0014_movement_daily.sql  ความเคลื่อนไหวสต็อกรายวัน (ดูว่าวันไหนพุ่ง วันไหนตก)
     0015_fn_me.sql           ★ ดึงตัวตน+สิทธิ์ในรอบเดียว (ลดเวลาโหลดหน้า)
     0016_preorder_fulfil.sql ★ จ่ายของตามคิวสั่งจอง + เติม COGS ย้อนหลัง + มัดจำ
+    0017_notifications.sql   ★ คิวแจ้งเตือน LINE + trigger ตอนสถานะออเดอร์เปลี่ยน
   seed.sql                   ข้อมูลตัวอย่าง + บัญชีทดสอบ (local เท่านั้น)
 
 src/lib/
@@ -351,6 +371,89 @@ tests/money.test.ts  ทดสอบตรรกะค่าส่ง/ต้น�
 ```
 
 ---
+
+---
+
+## ตั้งค่า LINE (ทำครั้งเดียว)
+
+LINE เรียกเว็บเราจากอินเทอร์เน็ต **`localhost` ใช้ไม่ได้** ต้อง deploy ขึ้น Vercel ก่อน
+แล้วค่อยเอา URL ไปกรอกใน LINE Console
+
+### 1. Deploy ขึ้น Vercel
+
+ต้องมี Supabase บน cloud ก่อน (ฐานข้อมูลใน Docker เข้าถึงจากอินเทอร์เน็ตไม่ได้):
+
+```bash
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase db push        # ส่ง migration ทั้ง 17 ไฟล์ ไม่ส่ง seed
+```
+
+จากนั้น import repo เข้า [vercel.com](https://vercel.com) แล้วตั้ง Environment Variables
+ให้ครบตาม `.env.example` (ค่า Supabase ใช้ของ cloud ไม่ใช่ของ local)
+
+> `vercel.json` ตั้ง cron ไว้ให้แล้ว — ส่งแจ้งเตือนทุก 1 นาที และปลดล็อกสต็อกค้างทุก 5 นาที
+
+### 2. หาค่า 4 ตัวจาก LINE Developers Console
+
+เข้า [developers.line.biz](https://developers.line.biz/console/)
+
+| ตัวแปร | หาที่ไหน |
+|---|---|
+| `LINE_CHANNEL_ID` | Messaging API channel → **Basic settings** → Channel ID |
+| `LINE_CHANNEL_SECRET` | Messaging API channel → **Basic settings** → Channel secret |
+| `LINE_CHANNEL_ACCESS_TOKEN` | Messaging API channel → **Messaging API** → Channel access token (กด Issue แบบ long-lived) |
+| `NEXT_PUBLIC_LIFF_ID` | LINE Login channel → **LIFF** → Add → ได้ LIFF ID หน้าตา `2001234567-AbCdEfGh` |
+
+ตอนสร้าง LIFF ให้ตั้ง:
+
+- **Endpoint URL**: `https://<โดเมนของคุณ>/shop`
+- **Size**: Full
+- **Scopes**: เปิด `profile` และ `openid`
+
+### 3. ตั้ง Webhook
+
+Messaging API channel → **Messaging API**:
+
+- **Webhook URL**: `https://<โดเมนของคุณ>/api/line/webhook`
+- **Use webhook**: เปิด
+- **Auto-reply messages**: ปิด (ไม่งั้นบอทของ LINE จะตอบทับบอทเรา)
+- **Greeting messages**: ปิด (เราส่งข้อความต้อนรับเองตอน follow)
+
+กด **Verify** ถ้าขึ้น Success แปลว่าเชื่อมติดแล้ว
+
+> เปิด `https://<โดเมน>/api/line/webhook` ด้วยเบราว์เซอร์จะเห็น `{"ok":true,"configured":true}`
+> ใช้เช็คว่า deploy ติดและใส่ key ครบแล้ว
+
+### 4. สร้าง Rich Menu
+
+ทำรูปขนาด **2500 × 1686 px** แบ่ง 3 คอลัมน์ × 2 แถว ตามลำดับนี้:
+
+```
+[ หนังสือทั้งหมด ]  [ มาใหม่ ]         [ เปิดจอง ]
+[ ตะกร้า ]          [ ออเดอร์ของฉัน ]  [ ติดต่อแอดมิน ]
+```
+
+แล้วรัน:
+
+```bash
+node --env-file=.env.local scripts/setup-richmenu.mjs richmenu.png
+```
+
+สคริปต์จะลบเมนูเก่า สร้างใหม่ อัปโหลดรูป และตั้งเป็นเมนูเริ่มต้นให้ทุกคน
+
+### สิ่งที่ทำงานหลังตั้งค่าเสร็จ
+
+**แจ้งเตือนอัตโนมัติ 7 แบบ** — รับเงินแล้ว · รับการสั่งจอง · ของที่จองเข้าแล้ว ·
+รอชำระส่วนที่เหลือ · จัดส่งแล้ว (พร้อมเลขพัสดุ) · พัสดุถึงมือ · ยกเลิกคำสั่งซื้อ
+ทั้งหมดเป็น Flex Message มีปุ่มกดเข้าดูออเดอร์ได้เลย
+
+**บอทตอบอัตโนมัติ** — `ค้นหา <คำ>` (ตอบเป็นการ์ดหนังสือเลื่อนได้) · `ออเดอร์` (สถานะล่าสุด 3 รายการ) ·
+FAQ เรื่องค่าส่ง การชำระเงิน การคืนสินค้า เวลาทำการ
+
+**ล็อกอินด้วย LINE** — เปิดร้านจาก Rich Menu แล้วเข้าสู่ระบบเองอัตโนมัติ ไม่ต้องสมัครสมาชิก
+
+ดูว่าแจ้งเตือนออกไปหรือยังได้ที่เมนู **แจ้งเตือน** ในหลังบ้าน
 
 ## เรื่องความเร็ว
 

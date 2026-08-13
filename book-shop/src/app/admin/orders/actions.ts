@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
+import { drainNotificationsSafely } from '@/lib/line/notify'
 
 export type OrderActionState = { ok: boolean; message?: string }
 
@@ -65,6 +66,9 @@ export async function verifyPayment(
     })
     .eq('id', paymentId)
   if (error) return { ok: false, message: error.message }
+
+  // trigger ในฐานข้อมูลใส่ข้อความลงคิวไว้แล้ว ตรงนี้แค่ส่งออกทันทีไม่ต้องรอ cron
+  await drainNotificationsSafely()
 
   revalidatePath('/admin/orders')
   revalidatePath(`/admin/orders/${orderId}`)
@@ -134,6 +138,8 @@ export async function markShipped(
     .eq('id', order_id)
   if (orderError) return { ok: false, message: orderError.message }
 
+  await drainNotificationsSafely()
+
   revalidatePath('/admin/orders')
   revalidatePath(`/admin/orders/${order_id}`)
   return { ok: true, message: 'บันทึกการจัดส่งแล้ว' }
@@ -160,6 +166,8 @@ export async function cancelOrder(orderId: string): Promise<OrderActionState> {
   await supabase.from('stock_reservations').delete().eq('order_id', orderId)
   const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId)
   if (error) return { ok: false, message: error.message }
+
+  await drainNotificationsSafely()
 
   revalidatePath('/admin/orders')
   revalidatePath(`/admin/orders/${orderId}`)

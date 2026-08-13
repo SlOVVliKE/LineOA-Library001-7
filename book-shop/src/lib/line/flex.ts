@@ -1,0 +1,269 @@
+import type { LineMessage } from './client'
+
+const TEAL = '#0F766E'
+const AMBER = '#B45309'
+const GREY = '#6B7280'
+
+function baht(n: number): string {
+  return '฿' + n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function appUrl(path = ''): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  return `${base}${path}`
+}
+
+/** ลิงก์ที่เปิดในแอป LINE ถ้ามี LIFF ไม่งั้นเปิดเบราว์เซอร์ปกติ */
+function liffUrl(path: string): string {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID
+  return liffId ? `https://liff.line.me/${liffId}${path}` : appUrl(path)
+}
+
+interface OrderCardInput {
+  title: string
+  subtitle: string
+  orderNo: string
+  orderId: string
+  rows: [string, string][]
+  accent?: string
+  footerNote?: string
+  buttonLabel?: string
+}
+
+export function orderCard(i: OrderCardInput): LineMessage {
+  const accent = i.accent ?? TEAL
+  return {
+    type: 'flex',
+    altText: `${i.title} · ${i.orderNo}`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: accent,
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: i.title, color: '#FFFFFF', weight: 'bold', size: 'lg', wrap: true },
+          { type: 'text', text: i.subtitle, color: '#FFFFFFCC', size: 'sm', wrap: true, margin: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'text', text: i.orderNo, size: 'sm', color: GREY, weight: 'bold',
+          },
+          { type: 'separator', margin: 'md' },
+          ...i.rows.map(([label, value]) => ({
+            type: 'box' as const,
+            layout: 'horizontal' as const,
+            margin: 'md',
+            contents: [
+              { type: 'text', text: label, size: 'sm', color: GREY, flex: 3, wrap: true },
+              { type: 'text', text: value, size: 'sm', flex: 4, align: 'end', wrap: true, weight: 'bold' },
+            ],
+          })),
+          ...(i.footerNote
+            ? [{ type: 'text' as const, text: i.footerNote, size: 'xs', color: GREY, wrap: true, margin: 'lg' }]
+            : []),
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: accent,
+            height: 'sm',
+            action: {
+              type: 'uri',
+              label: i.buttonLabel ?? 'ดูรายละเอียด',
+              uri: liffUrl(`/shop/orders/${i.orderId}`),
+            },
+          },
+        ],
+      },
+    },
+  }
+}
+
+// ---------- ข้อความตามเหตุการณ์ ----------
+
+export function orderPaidMessage(p: {
+  orderId: string; orderNo: string; total: number
+}): LineMessage {
+  return orderCard({
+    title: 'ได้รับเงินแล้ว ขอบคุณค่ะ',
+    subtitle: 'กำลังจัดเตรียมพัสดุให้',
+    orderNo: p.orderNo,
+    orderId: p.orderId,
+    rows: [['ยอดชำระ', baht(p.total)]],
+    footerNote: 'เมื่อจัดส่งแล้วจะแจ้งเลขพัสดุให้ทันที',
+  })
+}
+
+export function preorderConfirmedMessage(p: {
+  orderId: string; orderNo: string; total: number
+}): LineMessage {
+  return orderCard({
+    title: 'รับการสั่งจองแล้ว',
+    subtitle: 'จะแจ้งทันทีที่ของถึงร้าน',
+    orderNo: p.orderNo,
+    orderId: p.orderId,
+    rows: [['ยอดชำระ', baht(p.total)]],
+    accent: AMBER,
+    footerNote: 'จัดส่งตามลำดับการจอง ใครจองก่อนได้ก่อน',
+  })
+}
+
+export function preorderArrivedMessage(p: {
+  orderId: string; orderNo: string
+}): LineMessage {
+  return orderCard({
+    title: 'หนังสือที่คุณจองเข้าแล้ว',
+    subtitle: 'เตรียมจัดส่งให้เลย',
+    orderNo: p.orderNo,
+    orderId: p.orderId,
+    rows: [],
+    footerNote: 'เราจะแจ้งเลขพัสดุอีกครั้งเมื่อส่งออก',
+  })
+}
+
+export function awaitingBalanceMessage(p: {
+  orderId: string; orderNo: string; balanceDue: number
+}): LineMessage {
+  return orderCard({
+    title: 'ของเข้าแล้ว รอชำระส่วนที่เหลือ',
+    subtitle: 'ชำระแล้วเราจะจัดส่งทันที',
+    orderNo: p.orderNo,
+    orderId: p.orderId,
+    rows: [['ยอดคงเหลือ', baht(p.balanceDue)]],
+    accent: AMBER,
+    buttonLabel: 'ชำระส่วนที่เหลือ',
+  })
+}
+
+export function orderShippedMessage(p: {
+  orderId: string; orderNo: string; trackingNo: string | null
+}): LineMessage {
+  return orderCard({
+    title: 'จัดส่งแล้ว',
+    subtitle: 'พัสดุออกจากร้านเรียบร้อย',
+    orderNo: p.orderNo,
+    orderId: p.orderId,
+    rows: p.trackingNo ? [['เลขพัสดุ', p.trackingNo]] : [],
+    footerNote: p.trackingNo
+      ? 'ใช้เลขนี้ติดตามพัสดุกับบริษัทขนส่งได้เลย'
+      : 'ติดต่อแอดมินได้ถ้าต้องการเลขพัสดุ',
+  })
+}
+
+export function orderDeliveredMessage(p: {
+  orderId: string; orderNo: string
+}): LineMessage {
+  return orderCard({
+    title: 'พัสดุถึงมือแล้ว',
+    subtitle: 'ขอบคุณที่อุดหนุนร้านเรา',
+    orderNo: p.orderNo,
+    orderId: p.orderId,
+    rows: [],
+    footerNote: 'หากสินค้ามีปัญหา ทักมาได้เลยภายใน 7 วัน',
+  })
+}
+
+export function orderCancelledMessage(p: {
+  orderId: string; orderNo: string
+}): LineMessage {
+  return orderCard({
+    title: 'คำสั่งซื้อถูกยกเลิก',
+    subtitle: 'หากไม่ได้ตั้งใจ ทักหาแอดมินได้เลย',
+    orderNo: p.orderNo,
+    orderId: p.orderId,
+    rows: [],
+    accent: GREY,
+  })
+}
+
+// ---------- การ์ดหนังสือ (ใช้ตอนลูกค้าค้นหา) ----------
+
+export interface BookCardInput {
+  id: string
+  title: string
+  author: string | null
+  price: number
+  coverUrl: string | null
+  available: number
+  isPreorder: boolean
+}
+
+export function bookCarousel(books: BookCardInput[]): LineMessage {
+  return {
+    type: 'flex',
+    altText: `พบหนังสือ ${books.length} เล่ม`,
+    contents: {
+      type: 'carousel',
+      contents: books.slice(0, 10).map((b) => ({
+        type: 'bubble',
+        size: 'kilo',
+        ...(b.coverUrl
+          ? { hero: { type: 'image', url: b.coverUrl, size: 'full', aspectRatio: '2:3', aspectMode: 'cover' } }
+          : {}),
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'sm',
+          contents: [
+            { type: 'text', text: b.title, weight: 'bold', size: 'sm', wrap: true, maxLines: 2 },
+            { type: 'text', text: b.author ?? '—', size: 'xs', color: GREY, wrap: true },
+            { type: 'text', text: baht(b.price), weight: 'bold', size: 'md', color: TEAL, margin: 'sm' },
+            {
+              type: 'text',
+              text: b.isPreorder
+                ? 'เปิดจอง'
+                : b.available > 0
+                  ? `พร้อมส่ง (เหลือ ${b.available})`
+                  : 'สินค้าหมด',
+              size: 'xs',
+              color: b.isPreorder ? AMBER : b.available > 0 ? TEAL : GREY,
+            },
+          ],
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'button',
+              style: 'primary',
+              color: TEAL,
+              height: 'sm',
+              action: { type: 'uri', label: 'ดูรายละเอียด', uri: liffUrl(`/shop/books/${b.id}`) },
+            },
+          ],
+        },
+      })),
+    },
+  }
+}
+
+export function textMessage(text: string): LineMessage {
+  return { type: 'text', text }
+}
+
+export function greetingMessage(displayName: string | null): LineMessage {
+  return {
+    type: 'text',
+    text:
+      `สวัสดีค่ะ${displayName ? ' คุณ' + displayName : ''} 🙏\n\n` +
+      'ยินดีต้อนรับสู่ร้านหนังสือของเรา\n' +
+      'พิมพ์คุยกับเราได้เลย เช่น\n' +
+      '• "ค้นหา สายลม" — หาหนังสือ\n' +
+      '• "ออเดอร์" — ดูคำสั่งซื้อล่าสุด\n' +
+      '• "ค่าส่ง" — ถามเรื่องค่าจัดส่ง\n\n' +
+      'หรือกดเมนูด้านล่างเพื่อเข้าร้านได้เลยค่ะ',
+  }
+}

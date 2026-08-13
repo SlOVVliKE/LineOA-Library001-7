@@ -16,6 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: '/admin/stock/receive',label: 'รับสินค้าเข้า',  show: can(user, 'lot.write') },
     { href: '/admin/stock/adjust', label: 'ปรับสต็อก',     show: can(user, 'lot.write') },
     { href: '/admin/reports',      label: 'รายงานกำไร',    show: can(user, 'cost.read') },
+    { href: '/admin/notifications', label: 'แจ้งเตือน',    show: can(user, 'order.read') },
   ].filter((n) => n.show)
 
   return (
