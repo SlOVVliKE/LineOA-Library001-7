@@ -1,21 +1,15 @@
-import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
+/**
+ * หน้าแรกส่งลูกค้าเข้าหน้าร้านทันที
+ *
+ * ไม่มีลิงก์ไปหลังบ้านที่นี่โดยตั้งใจ — ลูกค้าไม่ควรเห็นด้วยซ้ำว่ามีหลังบ้านอยู่
+ * แอดมินเข้าเองที่ /admin (middleware จะเด้งไป /login ถ้ายังไม่ได้ล็อกอิน)
+ *
+ * ย้ำว่านี่คือการ "ไม่โฆษณา" ไม่ใช่ระบบความปลอดภัย
+ * ตัวกันจริงคือ middleware + RLS + การตรวจสิทธิ์ในทุกหน้าและทุก action
+ * ต่อให้ลูกค้าเดา URL ถูกก็เข้าไม่ได้อยู่ดี
+ */
 export default function Home() {
-  return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-4">
-      <h1 className="text-xl font-semibold">ระบบร้านหนังสือ</h1>
-      <Link href="/shop" className="card hover:border-teal-400">
-        <div className="font-medium text-teal-800">หน้าร้าน</div>
-        <p className="mt-1 text-sm text-neutral-600">
-          สำหรับลูกค้า — เปิดผ่าน LINE หรือเปิดตรงในเบราว์เซอร์ก็ได้
-        </p>
-      </Link>
-      <Link href="/admin" className="card hover:border-teal-400">
-        <div className="font-medium text-teal-800">หลังบ้าน</div>
-        <p className="mt-1 text-sm text-neutral-600">
-          จัดการสต็อก ต้นทุน ออเดอร์ และรายงานกำไร
-        </p>
-      </Link>
-    </main>
-  )
+  redirect('/shop')
 }
