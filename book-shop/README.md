@@ -398,12 +398,19 @@ npx supabase db push        # ส่ง migration ทั้ง 17 ไฟล์ �
 
 เข้า [developers.line.biz](https://developers.line.biz/console/)
 
+ระบบใช้ **2 channel** ที่แยกกัน — Messaging API channel คือตัวที่คุยกับลูกค้า
+ส่วน LINE Login channel คือตัวที่มี LIFF ค่าจากสองตัวนี้ห้ามสลับกัน
+
 | ตัวแปร | หาที่ไหน |
 |---|---|
-| `LINE_CHANNEL_ID` | Messaging API channel → **Basic settings** → Channel ID |
-| `LINE_CHANNEL_SECRET` | Messaging API channel → **Basic settings** → Channel secret |
-| `LINE_CHANNEL_ACCESS_TOKEN` | Messaging API channel → **Messaging API** → Channel access token (กด Issue แบบ long-lived) |
-| `NEXT_PUBLIC_LIFF_ID` | LINE Login channel → **LIFF** → Add → ได้ LIFF ID หน้าตา `2001234567-AbCdEfGh` |
+| `LINE_CHANNEL_SECRET` | **Messaging API** channel → Basic settings → Channel secret |
+| `LINE_CHANNEL_ACCESS_TOKEN` | **Messaging API** channel → Messaging API → Channel access token (กด Issue แบบ long-lived) |
+| `LINE_LOGIN_CHANNEL_ID` | **LINE Login** channel → Basic settings → Channel ID (ตัวเลขล้วน) |
+| `NEXT_PUBLIC_LIFF_ID` | **LINE Login** channel → LIFF → ได้ LIFF ID หน้าตา `2001234567-AbCdEfGh` |
+
+> `LINE_LOGIN_CHANNEL_ID` ใช้ยืนยัน ID token ที่ LIFF ส่งมา ค่า `aud` ในโทเคนคือ ID ของ
+> Login channel ไม่ใช่ Messaging API channel — ใส่ผิดจะขึ้น "ตรวจสอบ LINE ID token ไม่ผ่าน"
+> โดยไม่บอกสาเหตุ ตอนแรกตัวแปรนี้ชื่อ `LINE_CHANNEL_ID` ซึ่งกำกวมจนชวนใส่ผิด จึงเปลี่ยนชื่อ
 
 ตอนสร้าง LIFF ให้ตั้ง:
 

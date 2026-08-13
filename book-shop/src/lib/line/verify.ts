@@ -11,10 +11,15 @@ export interface LineProfile {
  *
  * สำคัญ: ห้ามเชื่อ line_user_id ที่ client ส่งมาตรงๆ เด็ดขาด
  * ต้องให้ LINE ยืนยันก่อนเสมอ ไม่งั้นใครก็ปลอมเป็นลูกค้าคนอื่นได้
+ *
+ * ระวัง: ต้องใช้ ID ของ **LINE Login channel** ไม่ใช่ Messaging API channel
+ * เพราะ ID token ออกโดย LIFF ซึ่งอยู่ใต้ Login channel — ค่า aud ในโทเคนคือ ID ตัวนั้น
+ * ใส่ผิดจะได้ error "ตรวจสอบ LINE ID token ไม่ผ่าน" โดยไม่บอกว่าเพราะอะไร
+ * จึงตั้งชื่อตัวแปรให้ต่างกันชัดเจน ไม่ใช้ LINE_CHANNEL_ID ที่กำกวม
  */
 export async function verifyLineIdToken(idToken: string): Promise<LineProfile> {
-  const channelId = process.env.LINE_CHANNEL_ID
-  if (!channelId) throw new Error('ยังไม่ได้ตั้ง LINE_CHANNEL_ID')
+  const channelId = process.env.LINE_LOGIN_CHANNEL_ID
+  if (!channelId) throw new Error('ยังไม่ได้ตั้ง LINE_LOGIN_CHANNEL_ID')
 
   const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
     method: 'POST',
