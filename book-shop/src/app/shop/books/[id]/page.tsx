@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCustomer } from '@/lib/customer/session'
 import { CustomerGate } from '../../CustomerGate'
 import { AddToCart } from './AddToCart'
+import { FavouriteButton } from '@/components/FavouriteButton'
 import { formatBaht, formatDate } from '@/lib/money'
 
 export const dynamic = 'force-dynamic'
@@ -24,11 +25,15 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
 
   if (!book) notFound()
 
-  const { data: stock } = await supabase
-    .from('v_public_stock')
-    .select('available_to_sell')
-    .eq('book_id', id)
-    .maybeSingle()
+  const [{ data: stock }, { data: favourite }] = await Promise.all([
+    supabase.from('v_public_stock').select('available_to_sell').eq('book_id', id).maybeSingle(),
+    supabase
+      .from('book_favourites')
+      .select('book_id')
+      .eq('user_id', customer.id)
+      .eq('book_id', id)
+      .maybeSingle(),
+  ])
 
   const available = Number(stock?.available_to_sell ?? 0)
   const isPreorder = book.stock_mode !== 'stock'
@@ -74,6 +79,19 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
           disabled={!isPreorder && available <= 0}
           isPreorder={isPreorder}
         />
+
+        <div className="flex items-center justify-between gap-3 border-t border-neutral-200 pt-3">
+          <FavouriteButton
+            bookId={book.id as string}
+            initialStarred={Boolean(favourite)}
+            showLabel
+          />
+          {!isPreorder && available <= 0 && (
+            <p className="text-xs text-neutral-500">
+              ติดดาวไว้ แล้วเราจะแจ้งเมื่อของเข้า
+            </p>
+          )}
+        </div>
       </div>
 
       {book.description && (

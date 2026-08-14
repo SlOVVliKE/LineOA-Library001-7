@@ -24,6 +24,14 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <Link href="/shop" className="font-semibold">ร้านหนังสือ</Link>
           <nav className="flex items-center gap-1 text-sm">
+            <Link
+              href="/shop/favourites"
+              className="rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100"
+              title="รายการโปรด"
+            >
+              <span aria-hidden>★</span>
+              <span className="sr-only">รายการโปรด</span>
+            </Link>
             <Link href="/shop/orders" className="rounded-lg px-3 py-1.5 text-neutral-600 hover:bg-neutral-100">
               ออเดอร์ของฉัน
             </Link>

@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: '/admin/preorders',    label: 'สั่งจอง',       show: can(user, 'order.read') },
     { href: '/admin/books',        label: 'หนังสือ',       show: can(user, 'book.write') },
     { href: '/admin/categories',   label: 'หมวดหมู่',      show: can(user, 'book.write') },
+    { href: '/admin/favourites',   label: 'ลูกค้าสนใจ',    show: can(user, 'book.write') },
     { href: '/admin/stock',        label: 'สต็อกและต้นทุน', show: can(user, 'lot.write') || can(user, 'cost.read') },
     { href: '/admin/stock/receive',label: 'รับสินค้าเข้า',  show: can(user, 'lot.write') },
     { href: '/admin/stock/adjust', label: 'ปรับสต็อก',     show: can(user, 'lot.write') },

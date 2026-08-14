@@ -13,10 +13,18 @@ function appUrl(path = ''): string {
   return `${base}${path}`
 }
 
-/** ลิงก์ที่เปิดในแอป LINE ถ้ามี LIFF ไม่งั้นเปิดเบราว์เซอร์ปกติ */
+/**
+ * ลิงก์ที่เปิดในแอป LINE ถ้ามี LIFF ไม่งั้นเปิดเบราว์เซอร์ปกติ
+ *
+ * path นับจาก "รากของหน้าร้าน" เช่น '' , '/cart', '/orders/<id>'
+ * ห้ามใส่ /shop นำหน้า เพราะ Endpoint URL ของ LIFF ตั้งเป็น .../shop อยู่แล้ว
+ * และสิ่งที่ต่อท้าย LIFF URL จะถูกเอาไป "ต่อจาก" endpoint ไม่ใช่แทนที่
+ *   liffUrl('/orders/x')  ->  https://liff.line.me/{id}/orders/x  ->  .../shop/orders/x
+ * ถ้าใส่ '/shop/orders/x' จะกลายเป็น .../shop/shop/orders/x แล้วเจอ 404
+ */
 function liffUrl(path: string): string {
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID
-  return liffId ? `https://liff.line.me/${liffId}${path}` : appUrl(path)
+  return liffId ? `https://liff.line.me/${liffId}${path}` : appUrl(`/shop${path}`)
 }
 
 interface OrderCardInput {
@@ -82,7 +90,7 @@ export function orderCard(i: OrderCardInput): LineMessage {
             action: {
               type: 'uri',
               label: i.buttonLabel ?? 'ดูรายละเอียด',
-              uri: liffUrl(`/shop/orders/${i.orderId}`),
+              uri: liffUrl(`/orders/${i.orderId}`),
             },
           },
         ],
@@ -241,11 +249,74 @@ export function bookCarousel(books: BookCardInput[]): LineMessage {
               style: 'primary',
               color: TEAL,
               height: 'sm',
-              action: { type: 'uri', label: 'ดูรายละเอียด', uri: liffUrl(`/shop/books/${b.id}`) },
+              action: { type: 'uri', label: 'ดูรายละเอียด', uri: liffUrl(`/books/${b.id}`) },
             },
           ],
         },
       })),
+    },
+  }
+}
+
+/**
+ * แจ้งลูกค้าที่ติดดาวไว้ว่าหนังสือกลับมามีของแล้ว
+ *
+ * ไม่ใช้ orderCard เพราะข้อความนี้ไม่มีเลขออเดอร์ และปุ่มต้องพาไปหน้าหนังสือ
+ * ไม่ใช่หน้าออเดอร์
+ */
+export function bookBackInStockMessage(p: {
+  bookId: string
+  title: string
+  price: number
+}): LineMessage {
+  return {
+    type: 'flex',
+    altText: `${p.title} กลับมามีของแล้ว`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: TEAL,
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text', text: 'เล่มที่คุณสนใจกลับมาแล้ว',
+            color: '#FFFFFF', weight: 'bold', size: 'lg', wrap: true,
+          },
+          {
+            type: 'text', text: 'มีจำนวนจำกัด กดสั่งได้เลย',
+            color: '#FFFFFFCC', size: 'sm', wrap: true, margin: 'sm',
+          },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          { type: 'text', text: p.title, weight: 'bold', size: 'md', wrap: true },
+          { type: 'text', text: baht(p.price), size: 'md', color: TEAL, weight: 'bold', margin: 'sm' },
+          {
+            type: 'text',
+            text: 'คุณกดดาวเล่มนี้ไว้ เราเลยแจ้งให้ทราบเมื่อของเข้า',
+            size: 'xs', color: GREY, wrap: true, margin: 'lg',
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: TEAL,
+            height: 'sm',
+            action: { type: 'uri', label: 'ดูหนังสือ', uri: liffUrl(`/books/${p.bookId}`) },
+          },
+        ],
+      },
     },
   }
 }

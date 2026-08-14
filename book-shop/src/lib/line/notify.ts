@@ -4,7 +4,7 @@ import { pushMessage, isLineConfigured } from './client'
 import {
   orderPaidMessage, preorderConfirmedMessage, preorderArrivedMessage,
   awaitingBalanceMessage, orderShippedMessage, orderDeliveredMessage,
-  orderCancelledMessage,
+  orderCancelledMessage, bookBackInStockMessage,
 } from './flex'
 import type { LineMessage } from './client'
 
@@ -110,6 +110,10 @@ function buildMessage(type: string, p: Record<string, unknown>): LineMessage | n
                                  orderId, orderNo, trackingNo: (p.tracking_no as string) ?? null })
     case 'order_delivered':    return orderDeliveredMessage({ orderId, orderNo })
     case 'order_cancelled':    return orderCancelledMessage({ orderId, orderNo })
+    case 'book_back_in_stock': return bookBackInStockMessage({
+                                 bookId: String(p.book_id ?? ''),
+                                 title: String(p.title ?? 'หนังสือ'),
+                                 price: Number(p.price ?? 0) })
     default:                   return null
   }
 }
