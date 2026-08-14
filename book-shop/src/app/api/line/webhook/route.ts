@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { replyMessage, isLineConfigured } from '@/lib/line/client'
 import {
   greetingMessage, textMessage, bookCarousel, orderCard,
+  shopMenuMessage, withQuickMenu,
   type BookCardInput,
 } from '@/lib/line/flex'
 import { ORDER_STATUS_LABEL } from '@/lib/orderStatus'
@@ -63,7 +64,12 @@ async function handleEvent(event: LineEvent) {
       .eq('line_user_id', lineUserId)
       .maybeSingle()
 
-    await replyMessage(replyToken, [greetingMessage((user?.display_name as string) ?? null)])
+    // ส่งการ์ดเมนูตามไปด้วยเสมอ เพราะลูกค้าบน iPad/PC ไม่เห็นริชเมนู
+    // ถ้าไม่มีการ์ดนี้ เขาจะไม่มีทางเข้าร้านได้เลยตั้งแต่ข้อความแรก
+    await replyMessage(replyToken, [
+      greetingMessage((user?.display_name as string) ?? null),
+      shopMenuMessage(),
+    ])
     return
   }
 
@@ -78,6 +84,12 @@ async function handleEvent(event: LineEvent) {
 async function answer(text: string, lineUserId: string) {
   const admin = createAdminClient()
   const lower = text.toLowerCase()
+
+  // ---------- เรียกเมนูร้าน ----------
+  // วางไว้บนสุดเพราะเป็นทางเข้าหลักของลูกค้าที่ไม่เห็นริชเมนู (iPad / LINE บน PC)
+  if (/^(เมนู|เข้าร้าน|ร้าน|ซื้อ|สั่งซื้อ|menu|shop)$/i.test(lower)) {
+    return [shopMenuMessage()]
+  }
 
   // ---------- เช็คสถานะออเดอร์ ----------
   const orderNoMatch = text.match(/OD-\d{4}-\d+/i)
@@ -179,14 +191,18 @@ async function answer(text: string, lineUserId: string) {
   }
 
   // ---------- ไม่เข้าใจ ----------
-  return [textMessage(
-    'ขอโทษค่ะ ยังไม่เข้าใจคำถามนี้ 🙏\n\n' +
-    'ลองพิมพ์แบบนี้ดูนะคะ\n' +
-    '• "ค้นหา <ชื่อหนังสือ>"\n' +
-    '• "ออเดอร์" — ดูคำสั่งซื้อล่าสุด\n' +
-    '• "ค่าส่ง" / "การชำระเงิน" / "คืนสินค้า"\n\n' +
-    'หรือรอสักครู่ แอดมินจะมาตอบเองค่ะ'
-  )]
+  // แนบการ์ดเมนูไปด้วย ลูกค้าที่หลงทางจะได้มีปุ่มกดต่อทันที ไม่ต้องเดาคำสั่ง
+  return [
+    withQuickMenu(textMessage(
+      'ขอโทษค่ะ ยังไม่เข้าใจคำถามนี้ 🙏\n\n' +
+      'ลองพิมพ์แบบนี้ดูนะคะ\n' +
+      '• "ค้นหา <ชื่อหนังสือ>"\n' +
+      '• "ออเดอร์" — ดูคำสั่งซื้อล่าสุด\n' +
+      '• "ค่าส่ง" / "การชำระเงิน" / "คืนสินค้า"\n\n' +
+      'หรือรอสักครู่ แอดมินจะมาตอบเองค่ะ'
+    )),
+    shopMenuMessage(),
+  ]
 }
 
 export async function GET() {

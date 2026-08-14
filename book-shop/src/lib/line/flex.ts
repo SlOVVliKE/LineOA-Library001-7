@@ -321,6 +321,96 @@ export function bookBackInStockMessage(p: {
   }
 }
 
+// ---------- เมนูร้านแบบการ์ด ----------
+
+/** ปุ่มในเมนูร้าน ใช้ร่วมกันทั้งการ์ดและ quick reply จะได้ไม่หลุดกัน */
+const SHOP_MENU: { label: string; path: string }[] = [
+  { label: '📚 หนังสือทั้งหมด', path: '' },
+  { label: '✨ มาใหม่',        path: '/?sort=new' },
+  { label: '📅 เปิดจอง',        path: '/?mode=preorder' },
+  { label: '⭐ รายการโปรด',     path: '/favourites' },
+  { label: '🛒 ตะกร้า',         path: '/cart' },
+  { label: '📦 ออเดอร์ของฉัน',  path: '/orders' },
+]
+
+/**
+ * การ์ดเมนูร้าน — ทางเข้าสำรองแทนริชเมนู
+ *
+ * ริชเมนูกับ quick reply แสดงเฉพาะ LINE บนมือถือ (iOS/Android)
+ * ลูกค้าที่ใช้ iPad หรือ LINE บน PC จะไม่เห็นเลย เข้าร้านไม่ได้
+ * ปุ่มใน Flex Message เป็น "เนื้อหาของข้อความ" ไม่ใช่ UI ของแอป จึงแสดงได้ทุกเครื่อง
+ */
+export function shopMenuMessage(): LineMessage {
+  return {
+    type: 'flex',
+    altText: 'เมนูร้านหนังสือ',
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: TEAL,
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: 'เมนูร้านหนังสือ', color: '#FFFFFF', weight: 'bold', size: 'lg' },
+          {
+            type: 'text', text: 'กดปุ่มด้านล่างเพื่อเข้าร้านได้เลย',
+            color: '#FFFFFFCC', size: 'sm', margin: 'sm', wrap: true,
+          },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '12px',
+        contents: SHOP_MENU.map((m) => ({
+          type: 'button' as const,
+          style: 'secondary' as const,
+          height: 'sm' as const,
+          action: { type: 'uri' as const, label: m.label, uri: liffUrl(m.path) },
+        })),
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '12px',
+        contents: [
+          {
+            type: 'text',
+            text: 'พิมพ์ "เมนู" เมื่อไรก็ได้เพื่อเรียกการ์ดนี้อีกครั้ง',
+            size: 'xs', color: GREY, wrap: true, align: 'center',
+          },
+        ],
+      },
+    },
+  }
+}
+
+/**
+ * ปุ่มลัดใต้ช่องพิมพ์ (แสดงเฉพาะ LINE บนมือถือ)
+ *
+ * เอาไว้แปะกับข้อความตอบกลับ ให้คนใช้มือถือกดต่อได้เลยโดยไม่ต้องพิมพ์
+ * บน PC/iPad จะไม่แสดง ซึ่งไม่เป็นไรเพราะมีการ์ดเมนูรองรับอยู่แล้ว
+ */
+export function withQuickMenu(message: LineMessage): LineMessage {
+  return {
+    ...message,
+    quickReply: {
+      items: [
+        {
+          type: 'action',
+          action: { type: 'message', label: 'เมนูร้าน', text: 'เมนู' },
+        },
+        ...SHOP_MENU.slice(0, 5).map((m) => ({
+          type: 'action' as const,
+          action: { type: 'uri' as const, label: m.label.slice(0, 20), uri: liffUrl(m.path) },
+        })),
+      ],
+    },
+  }
+}
+
 export function textMessage(text: string): LineMessage {
   return { type: 'text', text }
 }
@@ -334,7 +424,8 @@ export function greetingMessage(displayName: string | null): LineMessage {
       'พิมพ์คุยกับเราได้เลย เช่น\n' +
       '• "ค้นหา สายลม" — หาหนังสือ\n' +
       '• "ออเดอร์" — ดูคำสั่งซื้อล่าสุด\n' +
-      '• "ค่าส่ง" — ถามเรื่องค่าจัดส่ง\n\n' +
+      '• "ค่าส่ง" — ถามเรื่องค่าจัดส่ง\n' +
+      '• "เมนู" — เรียกปุ่มเข้าร้าน\n\n' +
       'หรือกดเมนูด้านล่างเพื่อเข้าร้านได้เลยค่ะ',
   }
 }
