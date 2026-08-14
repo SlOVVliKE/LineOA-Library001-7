@@ -18,8 +18,18 @@ if (!TOKEN) {
   process.exit(1)
 }
 
+/**
+ * สร้างลิงก์เปิดหน้าร้าน
+ *
+ * ระวัง: Endpoint URL ของ LIFF ตั้งไว้เป็น .../shop อยู่แล้ว
+ * สิ่งที่ต่อท้าย LIFF URL จะถูก "เอาไปต่อจาก endpoint" ไม่ใช่แทนที่
+ *   https://liff.line.me/{id}        -> https://.../shop
+ *   https://liff.line.me/{id}/cart   -> https://.../shop/cart
+ * ถ้าใส่ '/shop' ตรงนี้จะกลายเป็น /shop/shop แล้วเจอ 404
+ * ส่วนกรณีไม่มี LIFF_ID (เช่นทดสอบบนเบราว์เซอร์) ต้องเติม /shop เอง
+ */
 const link = (path) =>
-  LIFF_ID ? `https://liff.line.me/${LIFF_ID}${path}` : `${APP_URL ?? ''}${path}`
+  LIFF_ID ? `https://liff.line.me/${LIFF_ID}${path}` : `${APP_URL ?? ''}/shop${path}`
 
 // พื้นที่ 2500x1686 แบ่ง 3 คอลัมน์ x 2 แถว
 const W = 2500, H = 1686, CW = Math.floor(W / 3), CH = Math.floor(H / 2)
@@ -31,11 +41,11 @@ const richMenu = {
   name: 'เมนูหลักร้านหนังสือ',
   chatBarText: 'เมนูร้าน',
   areas: [
-    { bounds: cell(0, 0), action: { type: 'uri', label: 'หนังสือทั้งหมด', uri: link('/shop') } },
-    { bounds: cell(1, 0), action: { type: 'uri', label: 'มาใหม่', uri: link('/shop?sort=new') } },
-    { bounds: cell(2, 0), action: { type: 'uri', label: 'เปิดจอง', uri: link('/shop?mode=preorder') } },
-    { bounds: cell(0, 1), action: { type: 'uri', label: 'ตะกร้า', uri: link('/shop/cart') } },
-    { bounds: cell(1, 1), action: { type: 'uri', label: 'ออเดอร์ของฉัน', uri: link('/shop/orders') } },
+    { bounds: cell(0, 0), action: { type: 'uri', label: 'หนังสือทั้งหมด', uri: link('') } },
+    { bounds: cell(1, 0), action: { type: 'uri', label: 'มาใหม่', uri: link('/?sort=new') } },
+    { bounds: cell(2, 0), action: { type: 'uri', label: 'เปิดจอง', uri: link('/?mode=preorder') } },
+    { bounds: cell(0, 1), action: { type: 'uri', label: 'ตะกร้า', uri: link('/cart') } },
+    { bounds: cell(1, 1), action: { type: 'uri', label: 'ออเดอร์ของฉัน', uri: link('/orders') } },
     { bounds: cell(2, 1), action: { type: 'message', label: 'ติดต่อแอดมิน', text: 'ขอคุยกับแอดมินค่ะ' } },
   ],
 }
