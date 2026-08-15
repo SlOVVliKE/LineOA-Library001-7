@@ -250,6 +250,7 @@ async function autoVerifySlip(p: {
     const base64 = Buffer.from(await p.file.arrayBuffer()).toString('base64')
     const check = await verifySlipBase64({
       base64,
+      mimeType: p.file.type || 'image/jpeg',
       expectedAmount: p.expectedAmount,
     })
 

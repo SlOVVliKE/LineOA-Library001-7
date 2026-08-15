@@ -186,6 +186,8 @@ interface CheckReceiver {
  */
 export async function verifySlipBase64(params: {
   base64: string
+  /** ชนิดไฟล์ เช่น image/jpeg — ต้องใส่นำหน้า base64 เป็น data URI */
+  mimeType: string
   expectedAmount: number
 }): Promise<Slip2GoResult> {
   // trim เพราะการคัดลอกคีย์มาวางในหน้าตั้งค่ามักติดช่องว่างหรือขึ้นบรรทัดใหม่มาด้วย
@@ -207,7 +209,9 @@ export async function verifySlipBase64(params: {
 
   const body = {
     payload: {
-      base64: params.base64,
+      // ชื่อฟิลด์คือ imageBase64 และต้องมี data URI นำหน้าตามตัวอย่างในเอกสาร
+      // ส่ง base64 เปล่าๆ หรือใช้ชื่อ base64 เฉยๆ จะไม่ผ่าน
+      imageBase64: `data:${params.mimeType};base64,${params.base64}`,
       checkCondition: {
         checkDuplicate: true,
         checkReceiver: [receiver],
@@ -226,8 +230,10 @@ export async function verifySlipBase64(params: {
   const timer = setTimeout(() => controller.abort(), 20_000)
 
   try {
+    // ชื่อ endpoint คือ qr-base64 ไม่ใช่ base64 เฉยๆ
+    // (เดาผิดรอบแรก ได้ Cannot POST กลับมา)
     const { res, json } = await postWithAuthFallback(
-      `${API}/verify-slip/base64/info`,
+      `${API}/verify-slip/qr-base64/info`,
       body,
       secret,
       controller.signal
