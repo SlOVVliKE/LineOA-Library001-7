@@ -1,81 +1,83 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getCustomer } from '@/lib/customer/session'
 import { CustomerGate } from './CustomerGate'
+import { ShopFilters } from './ShopFilters'
 import { formatBaht, formatDate } from '@/lib/money'
 
 export const dynamic = 'force-dynamic'
 
+/** ค่าจาก URL อาจมาเป็นค่าเดียวหรือหลายค่า — ทำให้เป็น array เสมอ */
+function toArray(v: string | string[] | undefined): string[] {
+  if (!v) return []
+  return Array.isArray(v) ? v : [v]
+}
+
 export default async function ShopHome({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; cat?: string; sort?: string; mode?: string }>
+  searchParams: Promise<{
+    q?: string
+    cat?: string | string[]
+    sort?: string
+    mode?: string | string[]
+  }>
 }) {
   const customer = await getCustomer()
   if (!customer) return <CustomerGate />
 
-  const { q, cat, sort, mode } = await searchParams
+  const sp = await searchParams
+  const q = sp.q?.trim()
+  const cats = toArray(sp.cat)
+  const modes = toArray(sp.mode).filter((m) => m === 'stock' || m === 'preorder')
+  const sortByNew = sp.sort === 'new'
+
   const supabase = await createClient()
 
-  // ปุ่ม "มาใหม่" กับ "เปิดจอง" ใน Rich Menu ยิงมาที่ ?sort=new และ ?mode=preorder
-  // ค่าที่ไม่รู้จักให้ตกกลับเป็นค่าปกติ ไม่ต้อง error — ลิงก์เก่าที่ลูกค้าเซฟไว้จะได้ไม่พัง
-  const sortByNew = sort === 'new'
-  const modeFilter = mode === 'preorder' || mode === 'stock' ? mode : null
-
-  let query = supabase
-    .from('books')
-    .select('id, sku, title, author, publisher, sell_price, cover_url, stock_mode, preorder_release_date, category_id')
-    .eq('is_active', true)
-    .limit(60)
+  // ใช้ v_shop_books แทนการยิง books + v_public_stock แยกกัน
+  // ได้ทั้งจำนวนคงเหลือและวันที่ของเข้าล่าสุดในรอบเดียว (ดู migration 0019)
+  let query = supabase.from('v_shop_books').select('*').limit(60)
 
   query = sortByNew
-    ? query.order('created_at', { ascending: false })
+    ? query.order('last_arrival_at', { ascending: false })
     : query.order('title')
 
   if (q) query = query.or(`title.ilike.%${q}%,author.ilike.%${q}%,isbn.ilike.%${q}%`)
-  if (cat) query = query.eq('category_id', cat)
+  if (cats.length > 0) query = query.in('category_id', cats)
 
+  // ติ๊กทั้งสองอันหรือไม่ติ๊กเลย = ไม่กรอง (ผลลัพธ์เหมือนกัน จึงไม่ต้องเสียรอบ query)
   // 'backorder' นับเป็นของสั่งจองด้วย เพราะลูกค้ามองว่าเหมือนกัน — จ่ายก่อน รอของทีหลัง
-  if (modeFilter === 'preorder') query = query.neq('stock_mode', 'stock')
-  if (modeFilter === 'stock') query = query.eq('stock_mode', 'stock')
+  if (modes.length === 1) {
+    query = modes[0] === 'stock'
+      ? query.eq('stock_mode', 'stock')
+      : query.neq('stock_mode', 'stock')
+  }
 
-  const [{ data: books }, { data: stock }, { data: categories }] = await Promise.all([
+  const [{ data: books }, { data: categories }] = await Promise.all([
     query,
-    supabase.from('v_public_stock').select('book_id, available_to_sell'),
     supabase.from('categories').select('id, name').order('sort_order'),
   ])
 
-  const stockMap = new Map(
-    (stock ?? []).map((s) => [s.book_id as string, Number(s.available_to_sell)])
-  )
-
-  /** สร้างลิงก์โดยคงค่ากรองอื่นไว้ กดเปลี่ยนหมวดแล้วต้องไม่หลุดจาก "เปิดจอง" */
-  const hrefWith = (patch: Record<string, string | null>) => {
-    const p = new URLSearchParams()
-    const merged = { q, cat, sort, mode, ...patch }
-    for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v)
-    const s = p.toString()
-    return s ? `/shop?${s}` : '/shop'
-  }
-
-  const chip = (active: boolean) =>
-    `badge border ${active ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-neutral-300 text-neutral-600'}`
-
   const emptyMessage = q
-    ? 'ไม่พบหนังสือที่ค้นหา'
-    : modeFilter === 'preorder'
+    ? `ไม่พบหนังสือที่ตรงกับ "${q}"`
+    : modes.length === 1 && modes[0] === 'preorder'
       ? 'ตอนนี้ยังไม่มีหนังสือเปิดให้จอง'
-      : modeFilter === 'stock'
+      : modes.length === 1 && modes[0] === 'stock'
         ? 'ตอนนี้ยังไม่มีหนังสือพร้อมส่ง'
-        : 'ยังไม่มีหนังสือในหมวดนี้'
+        : 'ยังไม่มีหนังสือที่ตรงกับตัวกรอง'
 
   return (
     <div className="space-y-4">
       <form className="flex gap-2">
-        {/* คงค่ากรองไว้ตอนกดค้นหา ไม่งั้นค้นทีเดียวหลุดกลับไปหน้ารวม */}
-        {cat && <input type="hidden" name="cat" value={cat} />}
-        {sort && <input type="hidden" name="sort" value={sort} />}
-        {mode && <input type="hidden" name="mode" value={mode} />}
+        {/* คงตัวกรองไว้ตอนกดค้นหา ไม่งั้นค้นทีเดียวหลุดกลับไปหน้ารวม */}
+        {cats.map((c) => (
+          <input key={c} type="hidden" name="cat" value={c} />
+        ))}
+        {modes.map((m) => (
+          <input key={m} type="hidden" name="mode" value={m} />
+        ))}
+        {sortByNew && <input type="hidden" name="sort" value="new" />}
         <input
           name="q"
           defaultValue={q ?? ''}
@@ -85,39 +87,13 @@ export default async function ShopHome({
         <button className="btn-ghost shrink-0">ค้นหา</button>
       </form>
 
-      <div className="flex flex-wrap gap-1.5">
-        <Link href={hrefWith({ sort: null, mode: null })} className={chip(!sortByNew && !modeFilter)}>
-          ทั้งหมด
-        </Link>
-        <Link href={hrefWith({ sort: 'new', mode: null })} className={chip(sortByNew)}>
-          มาใหม่
-        </Link>
-        <Link href={hrefWith({ mode: 'preorder', sort: null })} className={chip(modeFilter === 'preorder')}>
-          เปิดจอง
-        </Link>
-        <Link href={hrefWith({ mode: 'stock', sort: null })} className={chip(modeFilter === 'stock')}>
-          พร้อมส่ง
-        </Link>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        <Link href={hrefWith({ cat: null })} className={chip(!cat)}>
-          ทุกหมวด
-        </Link>
-        {(categories ?? []).map((c) => (
-          <Link
-            key={c.id as string}
-            href={hrefWith({ cat: c.id as string })}
-            className={chip(cat === c.id)}
-          >
-            {c.name}
-          </Link>
-        ))}
-      </div>
+      <Suspense fallback={<div className="card text-sm text-neutral-400">กำลังโหลดตัวกรอง...</div>}>
+        <ShopFilters categories={(categories ?? []) as { id: string; name: string }[]} />
+      </Suspense>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {(books ?? []).map((b) => {
-          const available = stockMap.get(b.id as string) ?? 0
+          const available = Number(b.available_to_sell ?? 0)
           const isPreorder = b.stock_mode !== 'stock'
           return (
             <Link
