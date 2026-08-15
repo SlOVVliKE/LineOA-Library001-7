@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCustomer, getOrCreateCartId } from '@/lib/customer/session'
 import { verifySlipBase64, isSlip2GoConfigured } from '@/lib/payment/slip2go'
+import { payableAmount } from '@/lib/payment/promptpay'
 import { drainNotificationsSafely } from '@/lib/line/notify'
 
 export type ShopState = { ok: boolean; message?: string }
@@ -174,7 +175,7 @@ export async function uploadSlip(
 
   const { data: order } = await supabase
     .from('orders')
-    .select('id, total, status, user_id')
+    .select('id, order_no, total, status, user_id, deposit_amount, balance_due')
     .eq('id', orderId)
     .maybeSingle()
 
@@ -204,10 +205,17 @@ export async function uploadSlip(
 
   if (payError) return { ok: false, message: payError.message }
 
+  // ยอดที่ต้องเทียบคือ "ยอดที่ลูกค้าโอนจริง" ซึ่งมีเศษสตางค์ประจำออเดอร์ต่อท้าย
+  // ไม่ใช่ order.total เฉยๆ — ถ้าเทียบผิดตัว Slip2Go จะตีว่ายอดไม่ตรงทุกใบ
+  // และต้องแยกกรณีมัดจำ/ส่วนที่เหลือด้วย ให้ตรงกับที่หน้าออเดอร์แสดง QR
+  const dueNow = purpose === 'balance'
+    ? Number(order.balance_due ?? 0)
+    : Number(order.deposit_amount ?? order.total)
+
   const result = await autoVerifySlip({
     paymentId: paymentId as string,
     orderId,
-    expectedAmount: Number(order.total),
+    expectedAmount: payableAmount(dueNow, order.order_no as string),
     file,
   })
 
