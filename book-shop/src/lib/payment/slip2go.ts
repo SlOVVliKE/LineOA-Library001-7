@@ -29,6 +29,38 @@ export function isSlip2GoConfigured(): boolean {
   return Boolean(process.env.SLIP2GO_SECRET && process.env.PROMPTPAY_ID)
 }
 
+/**
+ * รหัสที่ถือว่า "สลิปถูกต้องและผ่านทุกเงื่อนไข"
+ *
+ * ระวังกับดัก: Slip2Go ส่ง HTTP 200 กลับมาแทบทุกกรณี และรหัสความล้มเหลว
+ * ก็ขึ้นต้นด้วย 2 เหมือนกัน เช่น
+ *   200401 บัญชีผู้รับไม่ถูกต้อง   200402 ยอดโอนไม่ตรง
+ *   200404 ไม่พบสลิปในระบบธนาคาร   200500 สลิปปลอม   200501 สลิปซ้ำ
+ * ถ้าเช็คแค่ว่า "ขึ้นต้นด้วย 2" จะยืนยันเงินให้สลิปปลอมทันที
+ * จึงต้องระบุรหัสที่ยอมรับแบบเจาะจงเท่านั้น
+ */
+const SUCCESS_CODES = new Set(['200000', '200200'])
+
+/** แปลรหัสเป็นข้อความที่ลูกค้าและแอดมินอ่านรู้เรื่อง */
+const CODE_MESSAGE: Record<string, string> = {
+  '200401': 'สลิปนี้โอนเข้าบัญชีอื่น ไม่ใช่บัญชีของร้าน',
+  '200402': 'ยอดโอนไม่ตรงกับยอดที่ต้องชำระ',
+  '200403': 'วันที่โอนไม่ตรงเงื่อนไข',
+  '200404': 'ไม่พบสลิปนี้ในระบบธนาคาร',
+  '200500': 'สลิปไม่ถูกต้องหรือถูกดัดแปลง',
+  '200501': 'สลิปนี้เคยถูกใช้ไปแล้ว',
+  '200502': 'ระบบธนาคารขัดข้อง ลองใหม่อีกครั้ง',
+  '400002': 'ไฟล์สลิปไม่ถูกต้อง',
+  '400005': 'รูปสลิปไม่ถูกต้อง',
+  '401001': 'กุญแจเชื่อมต่อไม่ถูกต้อง (ตรวจ SLIP2GO_SECRET)',
+  '401004': 'แพ็กเกจ Slip2Go หมดอายุ',
+  '401005': 'โควตาตรวจสลิปหมดแล้ว',
+  '401006': 'เครดิต Slip2Go ไม่พอ',
+  '401007': 'IP ไม่ได้รับอนุญาต',
+  '429000': 'เรียกใช้ถี่เกินไป ลองใหม่อีกครั้ง',
+  '500500': 'ระบบตรวจสลิปขัดข้อง',
+}
+
 interface CheckReceiver {
   accountType?: string
   accountNumber?: string
@@ -50,8 +82,10 @@ export async function verifySlipBase64(params: {
   base64: string
   expectedAmount: number
 }): Promise<Slip2GoResult> {
-  const secret = process.env.SLIP2GO_SECRET
-  const promptpayId = process.env.PROMPTPAY_ID
+  // trim เพราะการคัดลอกคีย์มาวางในหน้าตั้งค่ามักติดช่องว่างหรือขึ้นบรรทัดใหม่มาด้วย
+  // ซึ่งทำให้ได้ 401001 Token Mismatch โดยที่คีย์ดูถูกต้องทุกตัวอักษร
+  const secret = process.env.SLIP2GO_SECRET?.trim()
+  const promptpayId = process.env.PROMPTPAY_ID?.trim()
   if (!secret || !promptpayId) {
     throw new Error('ยังไม่ได้ตั้งค่า SLIP2GO_SECRET หรือ PROMPTPAY_ID')
   }
@@ -111,15 +145,35 @@ export async function verifySlipBase64(params: {
       }
     }
 
-    // 2xxxxx = สำเร็จ ส่วนรหัสอื่นคือไม่ผ่านเงื่อนไข/สลิปปลอม/โควตาหมด
-    const verified = typeof json.code === 'string' && json.code.startsWith('2')
+    const code = json.code ?? String(res.status)
+    const amount = typeof json.data?.amount === 'number' ? json.data.amount : null
+
+    // ด่านที่ 1: รหัสต้องอยู่ในรายการที่ยอมรับเท่านั้น
+    let verified = SUCCESS_CODES.has(code)
+
+    // ด่านที่ 2: เทียบยอดเงินด้วยตัวเองอีกชั้น ไม่ฝากความถูกต้องของเงิน
+    // ไว้กับการตีความรหัสของบริการภายนอกอย่างเดียว
+    // ถ้าวันหนึ่งเขาเพิ่มรหัสใหม่หรือเปลี่ยนความหมาย เงินของเราต้องไม่หลุด
+    if (verified && amount !== null) {
+      const diff = Math.abs(amount - params.expectedAmount)
+      if (diff > 0.005) {
+        return {
+          verified: false, transRef: json.data?.transRef ?? null, amount, code,
+          message: `ยอดในสลิป ${amount.toFixed(2)} ไม่ตรงกับยอดที่ต้องชำระ ${params.expectedAmount.toFixed(2)}`,
+          raw: json,
+        }
+      }
+    } else if (verified && amount === null) {
+      // ผ่านรหัสแต่ไม่มียอดให้ตรวจ = ตรวจซ้ำไม่ได้ ไม่ยืนยันอัตโนมัติ
+      verified = false
+    }
 
     return {
       verified,
       transRef: json.data?.transRef ?? null,
-      amount: typeof json.data?.amount === 'number' ? json.data.amount : null,
-      code: json.code ?? String(res.status),
-      message: json.message ?? 'ไม่มีข้อความตอบกลับ',
+      amount,
+      code,
+      message: CODE_MESSAGE[code] ?? json.message ?? 'ไม่มีข้อความตอบกลับ',
       raw: json,
     }
   } catch (e) {
