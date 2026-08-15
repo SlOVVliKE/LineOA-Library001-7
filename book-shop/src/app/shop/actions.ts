@@ -4,7 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCustomer, getOrCreateCartId } from '@/lib/customer/session'
+import { verifySlipBase64, isSlip2GoConfigured } from '@/lib/payment/slip2go'
+import { drainNotificationsSafely } from '@/lib/line/notify'
 
 export type ShopState = { ok: boolean; message?: string }
 
@@ -193,7 +196,7 @@ export async function uploadSlip(
   if (uploadError) return { ok: false, message: `อัปโหลดไม่สำเร็จ: ${uploadError.message}` }
 
   // บันทึกลงตาราง payments ผ่านฟังก์ชัน เพื่อให้ยอดเงินมาจากออเดอร์เสมอ
-  const { error: payError } = await supabase.rpc('fn_attach_slip', {
+  const { data: paymentId, error: payError } = await supabase.rpc('fn_attach_slip', {
     p_order_id: orderId,
     p_slip_path: path,
     p_purpose: purpose,
@@ -201,6 +204,83 @@ export async function uploadSlip(
 
   if (payError) return { ok: false, message: payError.message }
 
+  const result = await autoVerifySlip({
+    paymentId: paymentId as string,
+    orderId,
+    expectedAmount: Number(order.total),
+    file,
+  })
+
   revalidatePath(`/shop/orders/${orderId}`)
-  return { ok: true, message: 'ส่งสลิปแล้ว รอแอดมินตรวจสอบ' }
+  return result
+}
+
+/**
+ * ตรวจสลิปอัตโนมัติ แล้วยืนยันเงินถ้าผ่านทุกเงื่อนไข
+ *
+ * หลักการสำคัญ: **ห้ามล้มเหลวแล้วทำให้ลูกค้าเสียหาย**
+ * ถ้าตรวจไม่ผ่านด้วยเหตุใดก็ตาม — API ล่ม โควตาหมด รูปเบลอ ยอดไม่ตรง —
+ * สลิปยังถูกบันทึกไว้เรียบร้อยและตกไปให้แอดมินตรวจมือเหมือนเดิม
+ * ไม่มีเส้นทางไหนที่ทำให้สลิปหายหรือออเดอร์ค้างโดยไม่มีใครรู้
+ */
+async function autoVerifySlip(p: {
+  paymentId: string
+  orderId: string
+  expectedAmount: number
+  file: File
+}): Promise<ShopState> {
+  const manual = { ok: true, message: 'ส่งสลิปแล้ว รอแอดมินตรวจสอบ' }
+
+  if (!isSlip2GoConfigured()) return manual
+
+  // ใช้ admin client เพราะขั้นตอนยืนยันเงินต้องแตะสต็อกและใบเสร็จ
+  // ซึ่งลูกค้าไม่มีสิทธิ์ — แต่ข้อมูลที่ใช้ตัดสินใจมาจากผลตรวจของธนาคาร
+  // ไม่ได้มาจากสิ่งที่ลูกค้าส่งมา จึงไม่เปิดช่องให้ปลอมสถานะ
+  const admin = createAdminClient()
+
+  try {
+    const base64 = Buffer.from(await p.file.arrayBuffer()).toString('base64')
+    const check = await verifySlipBase64({
+      base64,
+      expectedAmount: p.expectedAmount,
+    })
+
+    if (!check.verified) {
+      await admin.rpc('fn_record_slip_check', {
+        p_payment_id: p.paymentId,
+        p_payload: check.raw ?? { code: check.code, message: check.message },
+      })
+      return {
+        ok: true,
+        message: `ส่งสลิปแล้ว — ระบบตรวจอัตโนมัติยังไม่ผ่าน (${check.message}) แอดมินจะตรวจสอบให้อีกครั้ง`,
+      }
+    }
+
+    const { data: outcome, error } = await admin.rpc('fn_auto_confirm_slip', {
+      p_payment_id: p.paymentId,
+      p_trans_ref: check.transRef,
+      p_payload: check.raw ?? {},
+    })
+
+    if (error) {
+      console.error('[slip] ยืนยันอัตโนมัติล้มเหลว:', error.message)
+      return manual
+    }
+
+    if (outcome === 'duplicate') {
+      return {
+        ok: false,
+        message: 'สลิปนี้เคยถูกใช้กับคำสั่งซื้ออื่นแล้ว กรุณาแนบสลิปของรายการนี้',
+      }
+    }
+    if (outcome !== 'confirmed') return manual
+
+    // ยืนยันแล้ว = trigger ใส่ข้อความลงคิวไว้ ส่งออกทันทีไม่ต้องรอ cron
+    await drainNotificationsSafely()
+
+    return { ok: true, message: 'ยืนยันการชำระเงินอัตโนมัติแล้ว กำลังจัดเตรียมพัสดุ' }
+  } catch (e) {
+    console.error('[slip] ตรวจอัตโนมัติมีข้อผิดพลาด:', e)
+    return manual
+  }
 }
