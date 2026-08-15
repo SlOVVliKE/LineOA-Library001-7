@@ -78,19 +78,38 @@ export async function POST(request: Request) {
     )
   }
 
-  // ผูกกับแถวใน public.users (ใช้ admin เพราะเป็นการตั้งค่าเริ่มต้นของระบบ)
-  const { error: upsertError } = await admin.from('users').upsert(
-    {
-      auth_user_id: signIn.user.id,
-      line_user_id: profile.lineUserId,
-      display_name: profile.displayName,
-      picture_url: profile.pictureUrl,
-      email,
-    },
-    { onConflict: 'auth_user_id' }
-  )
-  if (upsertError) {
-    return NextResponse.json({ error: upsertError.message }, { status: 500 })
+  // ---------- ผูกกับแถวใน public.users ----------
+  //
+  // ตาราง users มี unique 3 คอลัมน์: auth_user_id, line_user_id, email
+  // upsert สั่งชนได้ทีละคอลัมน์เดียว ถ้าเลือก onConflict เป็น auth_user_id
+  // แล้วบังเอิญมีแถวเก่าถือ line_user_id นี้อยู่โดยผูกกับ auth user คนละตัว
+  // Postgres จะพยายาม INSERT แล้วชน users_line_user_id_key ทันที
+  //
+  // เกิดขึ้นจริงเมื่อ auth user ถูกลบทิ้งแต่แถวใน public.users ยังอยู่
+  // (ไม่มี FK ผูกไว้) แล้วลูกค้าคนเดิมล็อกอินใหม่ ระบบสร้าง auth user ใหม่ให้
+  //
+  // จึงต้องยึด line_user_id เป็นหลัก เพราะนั่นคือตัวตนที่แท้จริงของลูกค้า
+  // ส่วน auth_user_id เป็นแค่กลไกภายในที่สร้างใหม่ได้เสมอ
+  const { data: existingByLine } = await admin
+    .from('users')
+    .select('id, auth_user_id')
+    .eq('line_user_id', profile.lineUserId)
+    .maybeSingle()
+
+  const profileFields = {
+    auth_user_id: signIn.user.id,
+    line_user_id: profile.lineUserId,
+    display_name: profile.displayName,
+    picture_url: profile.pictureUrl,
+    email,
+  }
+
+  const { error: linkError } = existingByLine
+    ? await admin.from('users').update(profileFields).eq('id', existingByLine.id)
+    : await admin.from('users').upsert(profileFields, { onConflict: 'auth_user_id' })
+
+  if (linkError) {
+    return NextResponse.json({ error: linkError.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true, displayName: profile.displayName })
