@@ -61,6 +61,112 @@ const CODE_MESSAGE: Record<string, string> = {
   '500500': 'ระบบตรวจสลิปขัดข้อง',
 }
 
+interface ApiResponse {
+  code?: string
+  message?: string
+  data?: { transRef?: string; amount?: number }
+}
+
+/**
+ * ยิง API พร้อม Authorization
+ *
+ * ต้องเป็น `Bearer <secretKey>` — ยืนยันจากตัวอย่างโค้ดในหน้า API Connect
+ * ของ Slip2Go เอง:  'Authorization': 'Bearer {secretKey}'
+ *
+ * ระวัง: ข้อความอธิบายด้านซ้ายของหน้านั้นเขียนว่า "กำหนดค่า Value เท่ากับ
+ * Secret Key" ซึ่งชวนให้เข้าใจว่าใส่ดิบๆ ได้ ถ้าทำตามจะได้ 401001 ทุกครั้ง
+ * ตัวอย่างโค้ดคือสิ่งที่ถูก ไม่ใช่คำอธิบาย
+ *
+ * ยังเผื่อทางถอยไว้แบบดิบ เผื่อวันหนึ่งเขาเปลี่ยนรูปแบบ
+ * ปลอดภัยที่จะลองซ้ำ เพราะรหัส 401 ไม่กินโควตาสลิปตามตารางของ Slip2Go
+ */
+async function postWithAuthFallback(
+  url: string,
+  body: unknown,
+  secret: string,
+  signal: AbortSignal
+): Promise<{ res: Response; json: ApiResponse | null; usedBearer: boolean }> {
+  const send = (authValue: string) =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authValue },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+      signal,
+    })
+
+  const res = await send(`Bearer ${secret}`)
+  const json = (await res.json().catch(() => null)) as ApiResponse | null
+
+  if (json?.code === '401001') {
+    const retry = await send(secret)
+    const retryJson = (await retry.json().catch(() => null)) as ApiResponse | null
+    if (retryJson?.code !== '401001') {
+      return { res: retry, json: retryJson, usedBearer: false }
+    }
+  }
+
+  return { res, json, usedBearer: true }
+}
+
+/**
+ * ทดสอบว่ากุญแจเชื่อมต่อใช้ได้ไหม โดยไม่ต้องมีสลิป
+ *
+ * ใช้ endpoint ดึงข้อมูลบัญชี ซึ่งไม่กินโควตาตรวจสลิป
+ * มีไว้ให้แอดมินกดเช็คได้ก่อนเปิดใช้จริง จะได้ไม่ต้องโอนเงินจริงเพื่อลอง
+ */
+export async function checkSlip2GoConnection(): Promise<{
+  ok: boolean
+  message: string
+  usedBearer?: boolean
+  raw?: unknown
+}> {
+  const secret = process.env.SLIP2GO_SECRET?.trim()
+  if (!secret) return { ok: false, message: 'ยังไม่ได้ตั้งค่า SLIP2GO_SECRET' }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15_000)
+
+  const get = (authValue: string) =>
+    fetch(`${API}/account/info`, {
+      headers: { Authorization: authValue },
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+
+  try {
+    let usedBearer = true
+    let res = await get(`Bearer ${secret}`)
+    let json = (await res.json().catch(() => null)) as ApiResponse | null
+
+    if (json?.code === '401001') {
+      usedBearer = false
+      res = await get(secret)
+      json = (await res.json().catch(() => null)) as ApiResponse | null
+    }
+
+    if (!json) return { ok: false, message: `ตอบกลับไม่ถูกรูปแบบ (HTTP ${res.status})` }
+
+    const ok = typeof json.code === 'string' && json.code.startsWith('200')
+    return {
+      ok,
+      usedBearer,
+      message: ok
+        ? `เชื่อมต่อสำเร็จ (${usedBearer ? 'ใช้ Bearer' : 'ใช้ Secret ดิบ'})`
+        : CODE_MESSAGE[json.code ?? ''] ?? json.message ?? 'เชื่อมต่อไม่สำเร็จ',
+      raw: json,
+    }
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof Error && e.name === 'AbortError'
+        ? 'หมดเวลารอ' : 'ติดต่อ Slip2Go ไม่ได้',
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 interface CheckReceiver {
   accountType?: string
   accountNumber?: string
@@ -120,23 +226,12 @@ export async function verifySlipBase64(params: {
   const timer = setTimeout(() => controller.abort(), 20_000)
 
   try {
-    const res = await fetch(`${API}/verify-slip/base64/info`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // เอกสารระบุให้ใส่ Secret ตรงๆ ไม่มีคำว่า Bearer นำหน้า
-        Authorization: secret,
-      },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-
-    const json = (await res.json().catch(() => null)) as {
-      code?: string
-      message?: string
-      data?: { transRef?: string; amount?: number }
-    } | null
+    const { res, json } = await postWithAuthFallback(
+      `${API}/verify-slip/base64/info`,
+      body,
+      secret,
+      controller.signal
+    )
 
     if (!json) {
       return {
