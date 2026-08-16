@@ -82,6 +82,73 @@ export async function verifyPayment(
   }
 }
 
+/**
+ * ยืนยันการชำระเงินทั้งที่ลูกค้าไม่ได้ส่งสลิป
+ *
+ * เกิดขึ้นจริงบ่อย: ลูกค้าโอนแล้วทักมาในแชทว่า "โอนแล้วนะ" แต่ไม่กดอัปโหลด
+ * หรือจ่ายเงินสดหน้าร้าน/ที่งานอีเวนต์ ถ้าไม่มีทางนี้ ออเดอร์จะค้าง
+ * "รอชำระเงิน" ตลอดไป ตัดสต็อกไม่ได้ ออกใบเสร็จไม่ได้
+ *
+ * สร้างแถว payments ขึ้นมาก่อนเพื่อให้ประวัติการเงินไม่ขาดตอน
+ * แล้วค่อยเดินเส้นทางเดียวกับการยืนยันสลิปปกติ ตัวเลขในรายงานจึงตรงกัน
+ */
+export async function confirmPaidWithoutSlip(
+  orderId: string,
+  note: string
+): Promise<OrderActionState> {
+  const user = await requirePermission('payment.verify')
+  const supabase = await createClient()
+
+  const { data: order } = await supabase
+    .from('orders')
+    .select('status, total, deposit_amount, balance_due')
+    .eq('id', orderId)
+    .maybeSingle()
+
+  if (!order) return { ok: false, message: 'ไม่พบคำสั่งซื้อ' }
+
+  // ยอมให้เฉพาะออเดอร์ที่ยังไม่ได้ตัดสต็อก กันกดซ้ำจนตัดสต็อกสองรอบ
+  const isBalance = order.status === 'awaiting_balance'
+  if (!isBalance && order.status !== 'pending_payment' && order.status !== 'preorder_waiting') {
+    return { ok: false, message: 'ออเดอร์นี้ผ่านขั้นตอนรับเงินไปแล้ว' }
+  }
+
+  const amount = isBalance
+    ? Number(order.balance_due ?? 0)
+    : Number(order.deposit_amount ?? order.total)
+
+  const { error: insertError } = await supabase.from('payments').insert({
+    order_id: orderId,
+    method: 'bank_transfer_slip',
+    purpose: isBalance ? 'balance' : order.deposit_amount != null ? 'deposit' : 'full',
+    amount,
+    slip_url: null,
+    verify_status: 'manual_verified',
+    verified_at: new Date().toISOString(),
+    verified_by: user.id,
+    // เก็บเหตุผลไว้ให้ตรวจสอบย้อนหลังได้ว่าใครยืนยันโดยไม่มีหลักฐานสลิป
+    verify_payload: {
+      source: 'manual_no_slip',
+      note: note.trim() || null,
+      confirmed_by: user.id,
+    },
+  })
+  if (insertError) return { ok: false, message: insertError.message }
+
+  const { error: rpcError } = isBalance
+    ? await supabase.rpc('fn_confirm_balance_paid', { p_order_id: orderId, p_created_by: user.id })
+    : await supabase.rpc('fn_confirm_order_paid', { p_order_id: orderId, p_created_by: user.id })
+  if (rpcError) return { ok: false, message: rpcError.message }
+
+  await drainNotificationsSafely()
+
+  revalidatePath('/admin/orders')
+  revalidatePath(`/admin/orders/${orderId}`)
+  revalidatePath('/admin/preorders')
+  revalidatePath('/admin')
+  return { ok: true, message: 'บันทึกการรับเงินแล้ว ตัดสต็อกและออกใบเสร็จเรียบร้อย' }
+}
+
 const shipSchema = z.object({
   order_id: z.string().uuid(),
   carrier: z.enum(['flash', 'jnt']),

@@ -4,7 +4,10 @@ export interface DailyRow {
   day: string
   received: number
   sold: number
+  /** ปรับ + รับคืน − ของเสีย รวมกันแบบมีเครื่องหมาย (ลบ = สต็อกหายไป) */
   other: number
+  /** ยอดสุทธิของวันนั้นที่ฐานข้อมูลรวมมาให้แล้ว */
+  net: number
   cogs: number
 }
 

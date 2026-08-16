@@ -17,11 +17,17 @@ export function BookForm({
   defaults?: Record<string, unknown>
 }) {
   const [state, formAction] = useActionState(action, { ok: false })
-  const d = defaults ?? {}
+  // ค่าที่กรอกค้างไว้ตอนบันทึกไม่ผ่าน ต้องชนะค่าตั้งต้นเสมอ
+  // key บังคับให้ React สร้างฟอร์มใหม่ ไม่งั้น defaultValue ชุดใหม่จะไม่ถูกใช้
+  const d = { ...(defaults ?? {}), ...(state.values ?? {}) }
   const v = (k: string) => (d[k] === null || d[k] === undefined ? '' : String(d[k]))
 
   return (
-    <form action={formAction} className="card max-w-2xl space-y-4">
+    <form
+      key={state.ok ? 'saved' : (state.message ?? 'first')}
+      action={formAction}
+      className="card max-w-2xl space-y-4"
+    >
       <Alert ok={state.ok} message={state.message} />
 
       <div className="grid gap-4 sm:grid-cols-2">

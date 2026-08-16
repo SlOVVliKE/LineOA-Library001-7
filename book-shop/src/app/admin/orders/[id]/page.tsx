@@ -21,6 +21,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
     .from('orders')
     .select(`
       id, order_no, status, order_type, subtotal, discount, shipping_fee, total,
+      deposit_amount, balance_due,
       cogs_total, shipping_actual_cost, channel_fee, gross_profit,
       created_at, paid_at, shipped_at, expected_release_date,
       shipping_address, customer_note,
@@ -47,6 +48,19 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
     title_snapshot: string; sku_snapshot: string | null; qty: number
     unit_price: number; unit_cogs: number | null; line_total: number
   }>(order.order_items)
+
+  // ยอดที่ยังค้างอยู่จริง ณ ขั้นตอนนี้ — งวดสุดท้ายถ้าเป็นออเดอร์มัดจำ
+  const status = order.status as string
+  const isBalanceStage = status === 'awaiting_balance'
+  const dueNow = isBalanceStage
+    ? Number(order.balance_due ?? 0)
+    : Number(order.deposit_amount ?? order.total)
+
+  // มีสลิปรออยู่ก็ให้ตรวจสลิปไปตามปกติ ปุ่มนี้ไว้ใช้เฉพาะตอนไม่มีหลักฐานให้ตรวจ
+  const hasPendingSlip = payments.some((p) => p.verify_status === 'pending')
+  const canConfirmManually =
+    !hasPendingSlip &&
+    (isBalanceStage || status === 'pending_payment' || status === 'preorder_waiting')
 
   return (
     <div className="space-y-5">
@@ -88,7 +102,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                     <td className="td text-right">{formatBaht(Number(it.unit_price))}</td>
                     {showCost && (
                       <td className="td text-right text-neutral-500">
-                        {it.unit_cogs ? formatBaht(Number(it.unit_cogs)) : 'ยังไม่ตัดสต็อก'}
+                        {/* เทียบกับ null ตรงๆ ไม่ใช้ค่าความจริง เพราะต้นทุน 0 บาท
+                            (เช่นของแถม ของตัวอย่าง) เป็นค่าที่ถูกต้อง ไม่ใช่ "ยังไม่ตัด" */}
+                        {it.unit_cogs != null ? formatBaht(Number(it.unit_cogs)) : 'ยังไม่ตัดสต็อก'}
                       </td>
                     )}
                     <td className="td text-right font-medium">{formatBaht(Number(it.line_total))}</td>
@@ -102,6 +118,16 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             <h2 className="font-medium">การชำระเงิน</h2>
             {payments.length === 0 && (
               <p className="text-sm text-neutral-500">ลูกค้ายังไม่ได้ส่งสลิป</p>
+            )}
+
+            {/* ทางออกสำหรับออเดอร์ที่ลูกค้าโอนแล้วแต่ไม่ได้อัปโหลดสลิป
+                ถ้าไม่มีปุ่มนี้ ออเดอร์จะค้างสถานะรอชำระเงินไปตลอด */}
+            {canConfirmManually && (
+              <OrderActions
+                mode="manual-paid"
+                orderId={order.id as string}
+                amountLabel={formatBaht(dueNow)}
+              />
             )}
             {payments.map((p) => (
               <div key={p.id} className="rounded-lg border border-neutral-200 p-3 text-sm">

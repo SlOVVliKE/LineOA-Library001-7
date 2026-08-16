@@ -46,11 +46,21 @@ export default async function StockPage({
   const totalValue = (rows ?? []).reduce((s, r) => s + Number(r.stock_value_at_cost ?? 0), 0)
   const totalUnits = (rows ?? []).reduce((s, r) => s + Number(r.on_hand ?? 0), 0)
 
+  // เรื่องเครื่องหมายบวกลบ วิวส่งค่ามาไม่เหมือนกันในแต่ละคอลัมน์:
+  //   qty_sold / qty_damaged  ส่งมาเป็นจำนวนเต็มบวก (ขาย 1 เล่ม = 1)
+  //   qty_adjusted            ส่งมาพร้อมเครื่องหมายจริง (ปรับลด 1 เล่ม = -1)
+  // ถ้าเอามาบวกกันตรงๆ ของเสียจะกลายเป็นของเข้า แล้วยอดสุทธิจะเกินความจริง
+  // qty_returned ก็ต้องนับด้วย ไม่งั้นการรับคืนจากลูกค้าจะหายไปจากตาราง
   const dailyRows: DailyRow[] = (daily ?? []).map((d) => ({
     day: d.day as string,
     received: Number(d.qty_received ?? 0),
     sold: Number(d.qty_sold ?? 0),
-    other: Number(d.qty_adjusted ?? 0) + Number(d.qty_damaged ?? 0),
+    other:
+      Number(d.qty_adjusted ?? 0) -
+      Number(d.qty_damaged ?? 0) +
+      Number(d.qty_returned ?? 0),
+    // ยอดสุทธิใช้ค่าที่ฐานข้อมูลรวมมาให้ ไม่คำนวณซ้ำเอง จะได้ไม่มีทางเพี้ยนจากกัน
+    net: Number(d.qty_net ?? 0),
     cogs: Number(d.cogs_out ?? 0),
   }))
 
@@ -115,11 +125,13 @@ export default async function StockPage({
                   <td className="td text-right text-neutral-500">
                     {d.other !== 0 ? formatNumber(d.other) : '—'}
                   </td>
-                  <td className="td text-right">
-                    {formatNumber(d.received - d.sold + d.other)}
-                  </td>
+                  <td className="td text-right">{formatNumber(d.net)}</td>
+                  {/* ตัดสินด้วยจำนวนที่ขาย ไม่ใช่ตัวเลขต้นทุน เพราะต้นทุนรวม 0 บาท
+                      (ของแถม/ของตัวอย่าง) เป็นค่าที่ถูกต้อง ขีดกลางไว้ใช้กับวันที่ไม่มีการขาย */}
                   {showCost && (
-                    <td className="td text-right">{d.cogs > 0 ? formatBaht(d.cogs) : '—'}</td>
+                    <td className="td text-right">
+                      {d.sold > 0 ? formatBaht(d.cogs) : '—'}
+                    </td>
                   )}
                 </tr>
               ))}
@@ -215,7 +227,7 @@ export default async function StockPage({
                 <td className="td text-right">{formatNumber(Number(r.available_to_sell))}</td>
                 {showCost && (
                   <td className="td text-right">
-                    {r.avg_unit_cost ? formatBaht(Number(r.avg_unit_cost)) : '—'}
+                    {r.avg_unit_cost != null ? formatBaht(Number(r.avg_unit_cost)) : '—'}
                   </td>
                 )}
                 {showCost && (

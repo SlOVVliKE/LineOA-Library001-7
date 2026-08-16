@@ -7,7 +7,27 @@ import { requirePermission } from '@/lib/auth/permissions'
 import { receiveStock, adjustStock } from '@/lib/inventory/fifo'
 import { drainNotificationsSafely } from '@/lib/line/notify'
 
-export type ActionState = { ok: boolean; message?: string }
+/**
+ * `values` คือค่าที่ผู้ใช้เพิ่งกรอกส่งกลับไป
+ *
+ * React 19 ล้างช่องในฟอร์มให้เองหลังจาก action ทำงานจบ ไม่ว่าจะสำเร็จหรือไม่
+ * ถ้าไม่ส่งค่ากลับไป พอบันทึกไม่ผ่าน (เช่นสต็อกไม่พอ) ผู้ใช้จะเสียทุกอย่างที่พิมพ์
+ * ต้องเลือกหนังสือ ใส่จำนวน และพิมพ์เหตุผลใหม่ทั้งหมดเพียงเพราะพิมพ์ตัวเลขผิดตัวเดียว
+ */
+export type ActionState = {
+  ok: boolean
+  message?: string
+  values?: Record<string, string>
+}
+
+/** เก็บสิ่งที่ผู้ใช้กรอกไว้คืนฟอร์มตอนบันทึกไม่ผ่าน */
+function keepInput(formData: FormData): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of formData.entries()) {
+    if (typeof v === 'string') out[k] = v
+  }
+  return out
+}
 
 const receiveSchema = z.object({
   book_id: z.string().uuid('ต้องเลือกหนังสือ'),
@@ -33,7 +53,11 @@ export async function receiveStockAction(
   )
   const parsed = receiveSchema.safeParse(cleaned)
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? 'ข้อมูลไม่ถูกต้อง' }
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? 'ข้อมูลไม่ถูกต้อง',
+      values: keepInput(formData),
+    }
   }
 
   const d = parsed.data
@@ -53,7 +77,11 @@ export async function receiveStockAction(
       createdBy: user.id,
     })
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ' }
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ',
+      values: keepInput(formData),
+    }
   }
 
   // รับของเข้าอาจจ่ายคิวสั่งจองให้อัตโนมัติ → มีแจ้งเตือน "ของที่จองเข้าแล้ว" รออยู่ในคิว
@@ -83,7 +111,11 @@ export async function adjustStockAction(
 
   const parsed = adjustSchema.safeParse(Object.fromEntries(formData.entries()))
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? 'ข้อมูลไม่ถูกต้อง' }
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? 'ข้อมูลไม่ถูกต้อง',
+      values: keepInput(formData),
+    }
   }
 
   const supabase = await createClient()
@@ -96,7 +128,11 @@ export async function adjustStockAction(
       createdBy: user.id,
     })
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : 'ปรับสต็อกไม่สำเร็จ' }
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : 'ปรับสต็อกไม่สำเร็จ',
+      values: keepInput(formData),
+    }
   }
 
   revalidatePath('/admin/stock')

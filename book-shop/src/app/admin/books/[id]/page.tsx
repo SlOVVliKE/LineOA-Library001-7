@@ -1,7 +1,9 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission, getCurrentUser, can } from '@/lib/auth/permissions'
 import { formatBaht, formatDate, formatDateTime, formatNumber } from '@/lib/money'
+import { ToggleActive } from './ToggleActive'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,21 +41,35 @@ export default async function BookDetailPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">{book.title as string}</h1>
-        <p className="text-sm text-neutral-500">
-          {book.sku as string} · {(book.author as string) ?? 'ไม่ระบุผู้แต่ง'} ·{' '}
-          {formatBaht(Number(book.sell_price))}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold">{book.title as string}</h1>
+            {!book.is_active && (
+              <span className="badge bg-neutral-100 text-neutral-500">ปิดการขาย</span>
+            )}
+          </div>
+          <p className="text-sm text-neutral-500">
+            {book.sku as string} · {(book.author as string) ?? 'ไม่ระบุผู้แต่ง'} ·{' '}
+            {formatBaht(Number(book.sell_price))}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href={`/admin/books/${id}/edit`} className="btn-primary">แก้ไขข้อมูล</Link>
+          <ToggleActive id={id} isActive={Boolean(book.is_active)} />
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="คงเหลือจริง" value={formatNumber(Number(summary?.on_hand ?? 0))} />
         <Stat label="ถูกจองไว้" value={formatNumber(Number(summary?.reserved ?? 0))} />
         <Stat label="ขายได้" value={formatNumber(Number(summary?.available_to_sell ?? 0))} />
+        {/* เทียบกับ null ตรงๆ เพราะต้นทุนเฉลี่ย 0 บาทเป็นค่าที่ถูกต้อง ไม่ใช่ "ไม่มีข้อมูล" */}
         {showCost && (
           <Stat label="ต้นทุนเฉลี่ย"
-            value={summary?.avg_unit_cost ? formatBaht(Number(summary.avg_unit_cost)) : '—'} />
+            value={summary?.avg_unit_cost != null
+              ? formatBaht(Number(summary.avg_unit_cost))
+              : '—'} />
         )}
       </div>
 
@@ -133,7 +149,7 @@ export default async function BookDetailPage({
                 </td>
                 {showCost && (
                   <td className="td text-right">
-                    {m.unit_cost ? formatBaht(Number(m.unit_cost)) : '—'}
+                    {m.unit_cost != null ? formatBaht(Number(m.unit_cost)) : '—'}
                   </td>
                 )}
                 <td className="td text-neutral-500">{(m.reason as string) ?? '—'}</td>
