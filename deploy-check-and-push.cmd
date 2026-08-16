@@ -70,9 +70,17 @@ if not errorlevel 1 (
 del "%TEMP%\bs_staged.txt" >nul 2>&1
 echo     No secrets staged - OK
 
+REM ---------- commit message ----------
+REM Pass one as an argument to describe what changed, for example:
+REM     deploy-check-and-push.cmd "fix daily stock net total"
+REM Without an argument every commit gets the same generic text and the
+REM git history stops being useful for finding when a change happened.
+set "MSG=%~1"
+if "%MSG%"=="" set "MSG=update book-shop"
+
 git diff --cached --quiet
 if errorlevel 1 (
-  git commit -m "LINE OA integration: webhook with signature check, Flex notifications via outbox, rich menu, Netlify config"
+  git commit -m "%MSG%"
 ) else (
   echo     Nothing new to commit
 )

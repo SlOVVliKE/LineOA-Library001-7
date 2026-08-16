@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { drainNotificationsSafely } from '@/lib/line/notify'
+import { many } from '@/lib/embed'
 
 export type OrderActionState = { ok: boolean; message?: string }
 
@@ -89,8 +90,10 @@ export async function verifyPayment(
  * หรือจ่ายเงินสดหน้าร้าน/ที่งานอีเวนต์ ถ้าไม่มีทางนี้ ออเดอร์จะค้าง
  * "รอชำระเงิน" ตลอดไป ตัดสต็อกไม่ได้ ออกใบเสร็จไม่ได้
  *
- * สร้างแถว payments ขึ้นมาก่อนเพื่อให้ประวัติการเงินไม่ขาดตอน
- * แล้วค่อยเดินเส้นทางเดียวกับการยืนยันสลิปปกติ ตัวเลขในรายงานจึงตรงกัน
+ * ลำดับสำคัญมาก: เรียก RPC ให้ผ่านก่อน แล้วค่อยบันทึกแถว payments
+ * ถ้าบันทึก payments ก่อน แล้ว RPC ปฏิเสธ (เช่นแอดมินเผลอกดซ้ำ)
+ * แถว payments จะค้างอยู่โดยไม่มีอะไรลบให้ เพราะสองคำสั่งนี้อยู่คนละ transaction
+ * ผลคือประวัติการเงินมีรายการรับเงินซ้ำทั้งที่รับจริงครั้งเดียว
  */
 export async function confirmPaidWithoutSlip(
   orderId: string,
@@ -101,21 +104,41 @@ export async function confirmPaidWithoutSlip(
 
   const { data: order } = await supabase
     .from('orders')
-    .select('status, total, deposit_amount, balance_due')
+    .select('status, order_type, total, deposit_amount, balance_due, payments(purpose, verify_status)')
     .eq('id', orderId)
     .maybeSingle()
 
   if (!order) return { ok: false, message: 'ไม่พบคำสั่งซื้อ' }
 
-  // ยอมให้เฉพาะออเดอร์ที่ยังไม่ได้ตัดสต็อก กันกดซ้ำจนตัดสต็อกสองรอบ
   const isBalance = order.status === 'awaiting_balance'
-  if (!isBalance && order.status !== 'pending_payment' && order.status !== 'preorder_waiting') {
+
+  // ด่านที่ 1: สถานะต้องยังอยู่ในขั้นตอนรับเงิน
+  if (!isBalance && order.status !== 'pending_payment') {
     return { ok: false, message: 'ออเดอร์นี้ผ่านขั้นตอนรับเงินไปแล้ว' }
+  }
+
+  // ด่านที่ 2: ต้องไม่มีเงินก้อนเดียวกันที่ยืนยันไปแล้ว
+  // สั่งจองที่จ่ายแล้วจะค้างสถานะ preorder_waiting รอของเข้า ซึ่งมองจากสถานะอย่างเดียว
+  // แยกไม่ออกจากสั่งจองที่ยังไม่จ่าย ต้องดูที่แถว payments ถึงจะรู้
+  const stage = isBalance ? 'balance' : 'initial'
+  const alreadyPaid = many<{ purpose: string; verify_status: string }>(order.payments).some(
+    (p) =>
+      (p.verify_status === 'manual_verified' || p.verify_status === 'auto_verified') &&
+      (stage === 'balance' ? p.purpose === 'balance' : p.purpose !== 'balance')
+  )
+  if (alreadyPaid) {
+    return { ok: false, message: 'รับเงินก้อนนี้ไปแล้ว ดูรายการในส่วนการชำระเงิน' }
   }
 
   const amount = isBalance
     ? Number(order.balance_due ?? 0)
     : Number(order.deposit_amount ?? order.total)
+
+  // ให้ฐานข้อมูลตัดสินก่อนว่าเปลี่ยนสถานะได้ไหม ค่อยบันทึกหลักฐานการรับเงิน
+  const { error: rpcError } = isBalance
+    ? await supabase.rpc('fn_confirm_balance_paid', { p_order_id: orderId, p_created_by: user.id })
+    : await supabase.rpc('fn_confirm_order_paid', { p_order_id: orderId, p_created_by: user.id })
+  if (rpcError) return { ok: false, message: rpcError.message }
 
   const { error: insertError } = await supabase.from('payments').insert({
     order_id: orderId,
@@ -135,18 +158,21 @@ export async function confirmPaidWithoutSlip(
   })
   if (insertError) return { ok: false, message: insertError.message }
 
-  const { error: rpcError } = isBalance
-    ? await supabase.rpc('fn_confirm_balance_paid', { p_order_id: orderId, p_created_by: user.id })
-    : await supabase.rpc('fn_confirm_order_paid', { p_order_id: orderId, p_created_by: user.id })
-  if (rpcError) return { ok: false, message: rpcError.message }
-
   await drainNotificationsSafely()
 
   revalidatePath('/admin/orders')
   revalidatePath(`/admin/orders/${orderId}`)
   revalidatePath('/admin/preorders')
   revalidatePath('/admin')
-  return { ok: true, message: 'บันทึกการรับเงินแล้ว ตัดสต็อกและออกใบเสร็จเรียบร้อย' }
+  // สั่งจองที่จ่ายเงินแล้วยังไม่ได้ตัดสต็อกและยังไม่ออกใบเสร็จ ต้องรอของเข้าก่อน
+  // ถ้าบอกว่า "ตัดสต็อกและออกใบเสร็จเรียบร้อย" แอดมินจะเข้าใจผิดว่าพร้อมแพ็กส่งได้เลย
+  const isPreorderWaiting = !isBalance && order.order_type === 'preorder'
+  return {
+    ok: true,
+    message: isPreorderWaiting
+      ? 'บันทึกการรับเงินแล้ว ออเดอร์เข้าคิวรอของ — ระบบจะจ่ายของและออกใบเสร็จให้เองตอนกดรับสินค้าเข้า'
+      : 'บันทึกการรับเงินแล้ว ตัดสต็อกและออกใบเสร็จเรียบร้อย',
+  }
 }
 
 const shipSchema = z.object({

@@ -5,7 +5,9 @@ import { requirePermission, getCurrentUser, can } from '@/lib/auth/permissions'
 import { OrderActions } from './OrderActions'
 import { formatBaht, formatDateTime, formatDate } from '@/lib/money'
 import { payableAmount } from '@/lib/payment/promptpay'
-import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, PAYMENT_STATUS_LABEL } from '@/lib/orderStatus'
+import {
+  ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, PAYMENT_STATUS_LABEL, PAYMENT_PURPOSE_LABEL,
+} from '@/lib/orderStatus'
 import { one, many } from '@/lib/embed'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +29,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
       shipping_address, customer_note,
       users ( display_name, line_user_id ),
       order_items ( title_snapshot, sku_snapshot, qty, unit_price, unit_cogs, line_total ),
-      payments ( id, method, amount, slip_url, verify_status, created_at ),
+      payments ( id, method, purpose, amount, slip_url, verify_status, created_at ),
       receipts ( receipt_no, issued_at ),
       shipments ( tracking_no, status, actual_cost )
     `)
@@ -38,7 +40,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
 
   const addr = (order.shipping_address ?? {}) as Record<string, string>
   const payments = many<{
-    id: string; method: string; amount: number; slip_url: string | null
+    id: string; method: string; purpose: string; amount: number; slip_url: string | null
     verify_status: string; created_at: string
   }>(order.payments)
   const receipt = one<{ receipt_no: string; issued_at: string }>(order.receipts)
@@ -58,9 +60,17 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
 
   // มีสลิปรออยู่ก็ให้ตรวจสลิปไปตามปกติ ปุ่มนี้ไว้ใช้เฉพาะตอนไม่มีหลักฐานให้ตรวจ
   const hasPendingSlip = payments.some((p) => p.verify_status === 'pending')
+
+  // สั่งจองที่จ่ายเงินแล้วจะค้างสถานะ "รอของเข้า" ซึ่งดูจากสถานะอย่างเดียว
+  // แยกไม่ออกจากสั่งจองที่ยังไม่จ่าย ต้องเช็คว่ามีเงินก้อนนี้เข้ามาแล้วหรือยัง
+  // ไม่งั้นปุ่มจะโผล่ให้กดซ้ำได้ทั้งที่รับเงินไปแล้ว
+  const stagePaid = payments.some(
+    (p) =>
+      (p.verify_status === 'manual_verified' || p.verify_status === 'auto_verified') &&
+      (isBalanceStage ? p.purpose === 'balance' : p.purpose !== 'balance')
+  )
   const canConfirmManually =
-    !hasPendingSlip &&
-    (isBalanceStage || status === 'pending_payment' || status === 'preorder_waiting')
+    !hasPendingSlip && !stagePaid && (isBalanceStage || status === 'pending_payment')
 
   return (
     <div className="space-y-5">
@@ -138,8 +148,16 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                   </span>
                 </div>
                 <div className="mt-1 text-neutral-600">
-                  ยอดในระบบ {formatBaht(Number(p.amount))} · ยอดที่ลูกค้าควรโอน{' '}
-                  <strong>{formatBaht(payableAmount(Number(order.total), order.order_no as string))}</strong>
+                  {PAYMENT_PURPOSE_LABEL[p.purpose] ?? p.purpose} {formatBaht(Number(p.amount))}
+                  {/* ยอดลงท้ายด้วยสตางค์ไม่ซ้ำใช้จับคู่สลิปกับออเดอร์เท่านั้น
+                      รายการที่แอดมินกดรับเองไม่มีสลิปให้จับคู่ จึงไม่ต้องแสดงให้สับสน */}
+                  {p.slip_url && (
+                    <> · ยอดที่ลูกค้าควรโอน{' '}
+                      <strong>
+                        {formatBaht(payableAmount(Number(order.total), order.order_no as string))}
+                      </strong>
+                    </>
+                  )}
                 </div>
                 <OrderActions
                   mode="verify"

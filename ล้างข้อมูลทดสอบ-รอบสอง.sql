@@ -1,24 +1,22 @@
 -- ============================================================
 --  ล้างข้อมูลทดสอบที่สร้างระหว่างไล่กดทดสอบฝั่งแอดมิน
 --
---  รันหลังจากทดสอบ pre-order ครบวงจรเสร็จแล้วเท่านั้น
---  ถ้ารันก่อน จะไม่มีของให้จ่ายคิว OD-2026-000002
---
+--  ทดสอบครบทุก flow แล้ว รันไฟล์นี้ได้เลย
 --  ส่วนที่ 1 = อ่านอย่างเดียว  ส่วนที่ 2 = แก้ข้อมูลจริง
+--
+--  หมายเหตุ: ออเดอร์ทดสอบทั้ง 3 ใบ (OD-2026-000001/2/3) ไม่ลบ
+--  เพราะเป็นหลักฐานว่าระบบทำงานถูก และลบแล้วรายงานกำไรจะขาดช่วง
+--  ถ้าอยากเริ่มนับยอดขายจริงจากศูนย์ ให้ใช้ส่วนที่ 3 (ปิดคอมเมนต์เอง)
 -- ============================================================
 
 
 -- ============================================================
 --  ส่วนที่ 1 — ดูก่อนว่ามีอะไรค้างอยู่บ้าง
 -- ============================================================
-select 'ล็อตทดสอบ' ประเภท, pl.lot_no ชื่อ, b.sku, pl.qty_received รับเข้า, pl.qty_remaining เหลือ
-from public.purchase_lots pl
-join public.books b on b.id = pl.book_id
-where pl.lot_no in ('LOT-TESTRECV', 'LOT-TEST')
-
-union all
-
-select 'หนังสือทดสอบ', b.title, b.sku, null, null
+select b.sku, b.title, b.is_active เปิดขาย,
+       coalesce((select sum(pl.qty_remaining) from public.purchase_lots pl
+                  where pl.book_id = b.id), 0) คงเหลือ,
+       exists (select 1 from public.order_items oi where oi.book_id = b.id) เคยถูกสั่งซื้อ
 from public.books b
 where b.sku like 'TEST-%';
 
@@ -29,6 +27,13 @@ join public.books b on b.id = sm.book_id
 where sm.reason ilike '%ทดสอบ%'
 order by sm.created_at desc;
 
+-- รายการรับเงินที่แอดมินกดเองโดยไม่มีสลิป (ควรมี 2 รายการจากการทดสอบ)
+select o.order_no, p.purpose, p.amount, p.verify_payload->>'note' เหตุผล
+from public.payments p
+join public.orders o on o.id = p.order_id
+where p.verify_payload->>'source' = 'manual_no_slip'
+order by p.created_at;
+
 
 -- ============================================================
 --  ส่วนที่ 2 — ล้างจริง
@@ -36,11 +41,11 @@ order by sm.created_at desc;
 
 -- 2.1 ปิดการขายหนังสือทดสอบ ไม่ให้ลูกค้าเห็นที่หน้าร้าน
 --     ใช้ปิดแทนลบ เพราะออเดอร์ทดสอบอ้างถึงอยู่ ลบแล้วประวัติจะขาด
---     หลัง deploy รอบนี้จะกดปิดจากหน้าเว็บได้เลย ไม่ต้องมารัน SQL อีก
+--     ตอนนี้กดปิดจากหน้าหนังสือในเว็บได้แล้ว ไม่ต้องมารัน SQL อีก
 update public.books set is_active = false where sku like 'TEST-%';
 
 -- 2.2 ลบหนังสือทดสอบที่ไม่เคยถูกสั่งซื้อและไม่เคยมีของเข้า
---     เงื่อนไขสามข้อนี้กันไม่ให้เผลอลบของที่มีประวัติผูกอยู่
+--     เงื่อนไขสามข้อกันไม่ให้เผลอลบของที่มีประวัติผูกอยู่
 delete from public.books b
 where b.sku = 'TEST-0002'
   and not exists (select 1 from public.order_items oi where oi.book_id = b.id)
@@ -49,6 +54,23 @@ where b.sku = 'TEST-0002'
 
 -- 2.3 ล้างการจองที่หมดอายุ
 select public.fn_expire_reservations();
+
+
+-- ============================================================
+--  ส่วนที่ 3 — ล้างประวัติการขายทั้งหมด (ยังไม่เปิดใช้)
+--
+--  เอาคอมเมนต์ออกเฉพาะตอนจะเปิดร้านจริงและอยากให้รายงานเริ่มจากศูนย์
+--  ทำแล้วย้อนกลับไม่ได้ ยอดขาย กำไร ใบเสร็จ จะหายหมด
+--  ควรกด Backup ใน Supabase ก่อนทุกครั้ง
+-- ============================================================
+-- delete from public.receipts;
+-- delete from public.shipments;
+-- delete from public.payments;
+-- delete from public.preorder_queue;
+-- delete from public.order_items;
+-- delete from public.orders;
+-- alter sequence public.seq_order_no   restart with 1;
+-- alter sequence public.seq_receipt_no restart with 1;
 
 
 -- ============================================================
