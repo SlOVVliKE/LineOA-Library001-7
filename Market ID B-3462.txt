@@ -1,0 +1,17 @@
+Market ID: B-3462
+ชื่อ: Thirakan Wongkaen
+
+Server Domain : shippop.dev
+
+Base URL : http://mkpservice.shippop.dev
+
+API KEY : dv6b3e8257921f5c56dbea401b8bef1e382370aa3e054b25ea2379bbd0dbcadf681b625696cec390421787138166
+
+API Document (Postman) :
+https://documenter.getpostman.com/view/10021496/Tzz8qwkE#4676b401-ff63-4314-a84a-109716e5a9ee
+
+URL สำหรับเข้าสู่ระบบ : https://business.shippop.dev
+Username (Email) : thirakan.weef64@gmail.com
+Password : SlOVVliKE110070
+
+** สามารถดูรายละเอียดเพิ่มเติมได้ที่ลิ้งนี้ https://www.shippop.com/for-developers **
