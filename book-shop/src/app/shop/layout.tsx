@@ -60,6 +60,7 @@ function NavItem({
   return (
     <Link
       href={href}
+      prefetch={false}
       className="relative flex min-h-[44px] min-w-[52px] flex-col items-center justify-center
                  gap-0.5 rounded-xl px-1 transition active:scale-95"
       style={{ color: 'var(--ink-muted)' }}

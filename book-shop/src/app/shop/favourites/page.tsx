@@ -62,18 +62,18 @@ export default async function FavouritesPage() {
 
             return (
               <div key={b.id} className="card flex gap-3.5">
-                <Link href={`/shop/books/${b.id}`} className="shrink-0">
+                <Link href={`/shop/books/${b.id}`} prefetch={false} className="shrink-0">
                   <BookCover url={b.cover_url} className="h-[108px] w-[72px] rounded-lg" />
                 </Link>
 
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <Link href={`/shop/books/${b.id}`} className="block">
+                  <Link href={`/shop/books/${b.id}`} prefetch={false} className="block">
                     <h3 className="t-title line-clamp-2">{b.title}</h3>
                     {b.author && <p className="t-meta mt-0.5 line-clamp-1">{b.author}</p>}
                   </Link>
 
                   <div className="mt-auto pt-2">
-                    <Link href={`/shop/books/${b.id}`} className="price block">
+                    <Link href={`/shop/books/${b.id}`} prefetch={false} className="price block">
                       {formatBaht(Number(b.sell_price))}
                     </Link>
 

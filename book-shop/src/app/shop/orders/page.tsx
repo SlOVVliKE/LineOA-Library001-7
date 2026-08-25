@@ -38,6 +38,7 @@ export default async function MyOrdersPage() {
           <Link
             key={o.id as string}
             href={`/shop/orders/${o.id}`}
+            prefetch={false}
             className="card block transition active:scale-[0.99]"
           >
             {/* ยอดเงินขึ้นก่อนเลขที่ออเดอร์ เพราะเวลากลับมาดูรายการเก่า

@@ -32,12 +32,12 @@ export function CartList({ items }: { items: Item[] }) {
     <div className={`space-y-2.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
       {items.map((item) => (
         <div key={item.id} className="card flex gap-3.5">
-          <Link href={`/shop/books/${item.bookId}`} className="shrink-0">
+          <Link href={`/shop/books/${item.bookId}`} prefetch={false} className="shrink-0">
             <BookCover url={item.coverUrl} className="h-[92px] w-[62px] rounded-lg" />
           </Link>
 
           <div className="flex min-w-0 flex-1 flex-col">
-            <Link href={`/shop/books/${item.bookId}`}>
+            <Link href={`/shop/books/${item.bookId}`} prefetch={false}>
               <h3 className="t-title line-clamp-2 text-[15px]">{item.title}</h3>
             </Link>
             {item.isPreorder && (
