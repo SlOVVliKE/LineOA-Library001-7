@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCustomer } from '@/lib/customer/session'
 import { CustomerGate } from '../CustomerGate'
 import { FavouriteButton } from '@/components/FavouriteButton'
+import { BookCover } from '@/components/BookCover'
 import { formatBaht, formatDate } from '@/lib/money'
 
 export const dynamic = 'force-dynamic'
@@ -31,21 +32,21 @@ export default async function FavouritesPage() {
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <h1 className="text-lg font-semibold">รายการโปรด</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          หนังสือที่คุณติดดาวไว้ — เล่มที่ของหมด เราจะแจ้งให้ทราบเมื่อของเข้า
+        <h1 className="t-heading">รายการโปรด</h1>
+        <p className="t-meta mt-1">
+          เล่มที่ของหมด เราจะแจ้งเข้า LINE ให้เมื่อของเข้าใหม่
         </p>
       </div>
 
       {rows.length === 0 ? (
-        <div className="card space-y-2 text-center text-sm text-neutral-500">
-          <p>ยังไม่มีหนังสือในรายการโปรด</p>
-          <p>
-            กดรูปดาวที่หน้าหนังสือเพื่อเก็บไว้ดูทีหลัง{' '}
-            <Link href="/shop" className="text-teal-700">เลือกหนังสือ</Link>
-          </p>
+        <div className="card py-12 text-center">
+          <p className="t-body">ยังไม่มีหนังสือในรายการโปรด</p>
+          <p className="t-meta mt-1">กดรูปดาวที่หน้าหนังสือเพื่อเก็บไว้ดูทีหลัง</p>
+          <Link href="/shop" className="btn-ghost mt-5 inline-flex">
+            เลือกหนังสือ
+          </Link>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -60,40 +61,39 @@ export default async function FavouritesPage() {
             const isPreorder = b.stock_mode !== 'stock'
 
             return (
-              <div key={b.id} className="card flex gap-3">
+              <div key={b.id} className="card flex gap-3.5">
                 <Link href={`/shop/books/${b.id}`} className="shrink-0">
-                  <div className="flex h-24 w-16 items-center justify-center rounded bg-neutral-100 text-[10px] text-neutral-400">
-                    {b.cover_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={b.cover_url} alt="" className="h-full w-full rounded object-cover" />
-                    ) : (
-                      'ไม่มีปก'
-                    )}
-                  </div>
+                  <BookCover url={b.cover_url} className="h-[108px] w-[72px] rounded-lg" />
                 </Link>
-                <div className="min-w-0 flex-1">
+
+                <div className="flex min-w-0 flex-1 flex-col">
                   <Link href={`/shop/books/${b.id}`} className="block">
-                    <div className="truncate font-medium">{b.title}</div>
-                    <div className="truncate text-xs text-neutral-500">{b.author ?? '—'}</div>
-                    <div className="mt-1 font-semibold text-teal-800">
-                      {formatBaht(Number(b.sell_price))}
-                    </div>
+                    <h3 className="t-title line-clamp-2">{b.title}</h3>
+                    {b.author && <p className="t-meta mt-0.5 line-clamp-1">{b.author}</p>}
                   </Link>
-                  <div className="mt-1 text-xs">
-                    {!b.is_active ? (
-                      <span className="text-neutral-400">เลิกจำหน่ายแล้ว</span>
-                    ) : isPreorder ? (
-                      <span className="text-amber-700">
-                        เปิดจอง · ของเข้า {formatDate(b.preorder_release_date ?? '')}
-                      </span>
-                    ) : available > 0 ? (
-                      <span className="text-teal-700">พร้อมส่ง (เหลือ {available} เล่ม)</span>
-                    ) : (
-                      <span className="text-neutral-400">ของหมด · รอแจ้งเตือน</span>
-                    )}
-                  </div>
-                  <div className="mt-2">
-                    <FavouriteButton bookId={b.id} initialStarred />
+
+                  <div className="mt-auto pt-2">
+                    <Link href={`/shop/books/${b.id}`} className="price block">
+                      {formatBaht(Number(b.sell_price))}
+                    </Link>
+
+                    <div className="mt-1.5">
+                      {!b.is_active ? (
+                        <span className="badge badge-quiet">เลิกจำหน่ายแล้ว</span>
+                      ) : isPreorder ? (
+                        <span className="badge badge-warn">
+                          เปิดจอง · ของเข้า {formatDate(b.preorder_release_date ?? '')}
+                        </span>
+                      ) : available > 0 ? (
+                        <span className="badge badge-ok">พร้อมส่ง · เหลือ {available} เล่ม</span>
+                      ) : (
+                        <span className="badge badge-quiet">ของหมด · รอแจ้งเตือน</span>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5">
+                      <FavouriteButton bookId={b.id} initialStarred />
+                    </div>
                   </div>
                 </div>
               </div>

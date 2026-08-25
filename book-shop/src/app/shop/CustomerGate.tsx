@@ -61,10 +61,15 @@ export function CustomerGate() {
   }, [router])
 
   return (
-    <div className="card text-center text-sm">
-      <p className={status === 'error' ? 'text-red-600' : 'text-neutral-600'}>{message}</p>
+    <div className="card py-12 text-center">
+      <p
+        className="text-[15px]"
+        style={{ color: status === 'error' ? 'var(--danger)' : 'var(--ink-muted)' }}
+      >
+        {message}
+      </p>
       {status === 'error' && (
-        <button className="btn-ghost mt-3" onClick={() => location.reload()}>
+        <button className="btn-ghost mt-5" onClick={() => location.reload()}>
           ลองใหม่
         </button>
       )}

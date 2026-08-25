@@ -3,17 +3,16 @@
 @tailwind utilities;
 
 /* ============================================================
-   LINE Seed Sans TH — ไฟล์อยู่ที่ public/fonts/ แล้ว
+   LINE Seed Sans TH — ฟอนต์ของ LINE ตัวไทยโดย Cadson Demak
    ลิขสิทธิ์ SIL Open Font License 1.1 โดย LY Corporation
+   ไฟล์อยู่ที่ public/fonts/
 
-   ข้อจำกัดที่ต้องรู้: ชุดนี้มีน้ำหนัก 400 (Regular) กับ 700 (Bold) เท่านั้น
-   ไม่มี 500 หรือ 600 ให้ใช้
+   ข้อจำกัดที่กำหนดทั้งระบบตัวอักษรข้างล่าง:
+   ชุดนี้มีน้ำหนัก 400 (Regular) กับ 700 (Bold) เท่านั้น ไม่มี 500 หรือ 600
 
-   จึงประกาศน้ำหนักตามที่มีจริง ไม่กำหนดเป็นช่วง
-   ถ้าเขียนว่า "500 700" แล้วชี้ไปไฟล์ Bold ตัวอักษรที่สั่ง 500 ไว้
-   (เช่นชื่อหนังสือ) จะกลายเป็นหนา 700 ทันที ซึ่งหนาเกินไปสำหรับตัวไทย
-   พอประกาศตรงตามจริง เบราว์เซอร์จะเลือกไฟล์ที่ใกล้ที่สุดให้เอง
-   น้ำหนัก 500 จะได้ Regular ส่วน 600 ขึ้นไปได้ Bold
+   ประกาศน้ำหนักตามที่มีจริง ไม่กำหนดเป็นช่วง ถ้าเขียนว่า "500 700"
+   แล้วชี้ไปไฟล์ Bold ตัวอักษรที่สั่ง 500 ไว้จะกลายเป็นหนา 700 ทันที
+   ซึ่งหนาเกินไปสำหรับตัวไทย พอประกาศตรงตามจริง เบราว์เซอร์เลือกให้เอง
    ============================================================ */
 @font-face {
   font-family: 'LINE Seed Sans TH';
@@ -30,8 +29,7 @@
 
 :root {
   /* ---------- โทนกระดาษ ----------
-     พื้นหลังอมครีมแทนขาวจ้า ลดการล้าตาเวลาอ่านนานๆ
-     ค่าพวกนี้ไล่จากอ่อนไปเข้ม ใช้เป็นชั้นความลึกของพื้นผิว */
+     พื้นหลังอมครีมแทนขาวจ้า ลดการล้าตาเวลาอ่านนานๆ */
   --paper:        #fbf9f4;
   --paper-raised: #ffffff;
   --paper-sunken: #f4f0e8;
@@ -41,91 +39,180 @@
   --line:        #eae4d9;
   --line-strong: #ddd4c4;
 
-  /* ---------- ตัวอักษร ---------- */
-  --ink:       #2b2a26;
-  --ink-muted: #6f6961;
-  --ink-faint: #9a938a;
+  /* ---------- ตัวอักษร ----------
+     สามระดับนี้คือเครื่องมือหลักในการไล่ลำดับความสำคัญ
+     เพราะน้ำหนักตัวอักษรมีให้ใช้แค่สองระดับ
+     ทุกค่าผ่านเกณฑ์ contrast ของ WCAG AA บนพื้นครีม */
+  --ink:       #2b2a26;  /* 13.7:1 บนพื้นกระดาษ */
+  --ink-muted: #5f594f;  /*  6.6:1 */
+  --ink-faint: #6f695f;  /*  4.8:1 แม้บนพื้นจมซึ่งเข้มที่สุด */
 
   /* ---------- สีบอกสถานะ ----------
      เขียว LINE ใช้เฉพาะปุ่มลงมือทำ ไม่เอาไปใช้เป็นสีตกแต่ง
-     ถ้าใช้พร่ำเพรื่อ ลูกค้าจะเลิกสังเกตว่าอันไหนกดได้ */
+     ถ้าใช้พร่ำเพรื่อ ลูกค้าจะเลิกสังเกตว่าอันไหนกดได้
+
+     ตัวหนังสือบนปุ่มเขียวเป็นสีเข้ม ไม่ใช่สีขาว
+     ขาวบนเขียวนี้ได้ contrast แค่ 2.26:1 ซึ่งต่ำกว่าเกณฑ์ 4.5:1 มาก
+     อ่านยากจริงบนมือถือกลางแดด ส่วนตัวเข้มได้ 6.5:1
+     ทางเลือกอีกทางคือทำเขียวให้เข้มลงจนขาวอ่านออก แต่ต้องลงไปถึง #04833c
+     ซึ่งไม่เหลือความเป็นเขียว LINE แล้ว จึงเลือกเก็บสีแบรนด์ไว้แล้วสลับสีตัวอักษรแทน */
   --line-green:       #06c755;
   --line-green-press: #05a948;
-  --ok:      #3d6b45;
+  --on-green:         #0b2f16;
+  --ok:      #2f6b3d;
   --ok-bg:   #eaf3ea;
-  --warn:    #8a5a1b;
+  --warn:    #7a4e12;
   --warn-bg: #faf1e0;
-  --danger:  #a33232;
+  --danger:  #962c2c;
+  --danger-bg: #fbeaea;
 
   /* ---------- ระยะบรรทัดสำหรับภาษาไทย ----------
      ไทยมีสระบน สระล่าง และวรรณยุกต์ซ้อนได้ถึงสามชั้น (เช่น "เมื่อ" "ที่")
      ค่า 1.5 ที่ Tailwind ให้มาเป็นค่าสำหรับภาษาอังกฤษ พอมาใช้กับไทย
      วรรณยุกต์บรรทัดล่างจะเกือบชนสระล่างของบรรทัดบน อ่านแล้วอึดอัด */
   --leading-thai:  1.75;
-  --leading-tight: 1.45;
+  --leading-tight: 1.4;
 }
 
 html {
-  font-family: 'IBM Plex Sans Thai', 'LINE Seed Sans TH', system-ui, sans-serif;
+  font-family: 'LINE Seed Sans TH', system-ui, sans-serif;
 }
 
 body {
   background: var(--paper);
   color: var(--ink);
   line-height: var(--leading-thai);
-  /* ปรับให้ตัวอักษรบางลงนิดบนจอ retina ไม่งั้นตัวไทยจะดูหนาเกิน */
   -webkit-font-smoothing: antialiased;
-}
-
-/* หัวข้อและตัวเลขไม่ต้องการระยะบรรทัดเท่าเนื้อหา
-   เพราะเป็นบรรทัดเดียวจบ ถ้าปล่อย 1.75 จะดูลอยห่างจากของรอบตัว */
-h1, h2, h3, .tabular {
-  line-height: var(--leading-tight);
 }
 
 /* ตัวเลขเงินและจำนวน ใช้ความกว้างเท่ากันทุกหลัก
    ตัวเลขในตารางจะเรียงตรงคอลัมน์ อ่านง่ายขึ้นมากเวลาเทียบยอด */
 .tabular {
   font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
 }
 
 @layer components {
+  /* ============================================================
+     ระบบตัวอักษร
+     ============================================================
+     LINE Seed มีน้ำหนักแค่ 400 กับ 700 การไล่ลำดับความสำคัญด้วย
+     น้ำหนักจึงทำได้แค่ "ธรรมดา" กับ "หนา" ซึ่งไม่พอสำหรับหน้าร้าน
+     ที่ต้องแยกชื่อหนังสือ ผู้แต่ง สถานะ และราคาออกจากกัน
+
+     จึงไล่ลำดับด้วยขนาดกับสีแทน และเก็บ 700 ไว้ใช้เฉพาะราคา
+     กับหัวข้อจริงๆ ผลพลอยได้คือหน้าเว็บดูสงบขึ้น เพราะตัวหนาในภาษาไทย
+     มักทึบจนวรรณยุกต์ติดกัน ยิ่งใช้น้อยยิ่งอ่านสบาย
+
+     คลาสพวกนี้บอก "บทบาทของข้อความ" ไม่ใช่ "หน้าตาของข้อความ"
+     เวลาปรับสเกลทั้งระบบจึงแก้ที่เดียวจบ */
+
+  /* ชื่อหนังสือ ชื่อรายการ — เด่นด้วยขนาดและสีเข้ม ไม่ใช่ความหนา */
+  .t-title {
+    @apply text-[17px];
+    color: var(--ink);
+    line-height: 1.55;
+  }
+
+  /* เนื้อหาทั่วไป เรื่องย่อ คำอธิบาย */
+  .t-body {
+    @apply text-[15px];
+    color: var(--ink);
+  }
+
+  /* ข้อมูลประกอบ — ผู้แต่ง สถานะ วันที่ */
+  .t-meta {
+    @apply text-[13px];
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+
+  /* ป้ายกำกับเล็กสุด ใช้เท่าที่จำเป็น */
+  .t-micro {
+    @apply text-xs;
+    color: var(--ink-faint);
+    line-height: var(--leading-tight);
+  }
+
+  /* หัวข้อของส่วน — ที่เดียวที่ใช้ตัวหนานอกจากราคา */
+  .t-heading {
+    @apply text-lg font-bold;
+    color: var(--ink);
+    line-height: var(--leading-tight);
+  }
+
+  /* ราคา — สิ่งที่คนซื้อของมองก่อนเสมอ ต้องเด่นที่สุดในการ์ด
+     ใหญ่กว่าชื่อหนังสือและเป็นที่เดียวที่ใช้ 700 ในการ์ดสินค้า */
+  .price {
+    @apply tabular text-[22px] font-bold;
+    color: var(--ink);
+  }
+
+  /* ราคาย่อย เช่นในตะกร้าหรือสรุปยอด */
+  .price-sm {
+    @apply tabular text-base font-bold;
+    color: var(--ink);
+  }
+
+  /* ============================================================
+     พื้นผิวและตัวควบคุม
+     ============================================================ */
   .card {
-    @apply rounded-xl border bg-[color:var(--paper-raised)] p-4 sm:p-5;
+    @apply rounded-2xl border bg-[color:var(--paper-raised)] p-4;
     border-color: var(--line);
   }
 
   .label {
-    @apply mb-1.5 block text-sm font-medium;
+    @apply mb-1.5 block text-[13px];
     color: var(--ink-muted);
   }
 
-  /* ช่องกรอกสูง 44px ตามขนาดขั้นต่ำที่นิ้วคนแตะพลาดยาก
-     text-base (16px) สำคัญมากบน iOS — ถ้าเล็กกว่านี้ Safari
-     จะซูมหน้าจอเข้าอัตโนมัติตอนกดช่องกรอก แล้วเด้งกลับไม่สุด */
+  /* ช่องกรอกสูง 48px — ใหญ่กว่าเกณฑ์ขั้นต่ำ 44px เพราะลูกค้ากรอกที่อยู่
+     บนมือถือขณะเดินหรือนั่งรถ ยิ่งเป้าใหญ่ยิ่งพลาดยาก
+
+     text-base (16px) สำคัญมากบน iOS — ถ้าเล็กกว่านี้ Safari จะซูม
+     หน้าจอเข้าอัตโนมัติตอนกดช่องกรอก แล้วเด้งกลับไม่สุด */
   .input {
-    @apply w-full rounded-xl border px-3.5 py-2.5 text-base outline-none transition;
-    min-height: 44px;
+    @apply w-full rounded-xl border px-4 py-3 text-base outline-none transition;
+    min-height: 48px;
     border-color: var(--line-strong);
     background: var(--paper-raised);
+    color: var(--ink);
+  }
+  .input::placeholder {
+    color: var(--ink-faint);
   }
   .input:focus {
     border-color: var(--line-green);
-    box-shadow: 0 0 0 3px rgb(6 199 85 / 0.15);
+    box-shadow: 0 0 0 3px rgb(6 199 85 / 0.18);
+  }
+
+  /* ปุ่มเลือกไฟล์ที่เบราว์เซอร์สร้างให้เอง จัดสไตล์ผ่าน pseudo-element นี้เท่านั้น
+     ค่าเริ่มต้นของมันเล็กและหน้าตาไม่เข้ากับปุ่มอื่นในหน้า
+     ตั้ง min-height ให้แตะง่ายด้วย เพราะลูกค้าแนบสลิปจากมือถือเป็นหลัก */
+  .file-input::file-selector-button {
+    @apply mr-3 cursor-pointer rounded-lg border-0 px-3.5 text-[14px];
+    min-height: 36px;
+    background: var(--paper-sunken);
+    color: var(--ink);
+    font-family: inherit;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4
-           text-[15px] font-medium transition disabled:opacity-50;
-    min-height: 44px;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5
+           text-[15px] transition disabled:opacity-50;
+    min-height: 48px;
   }
+  /* ย่อเล็กน้อยตอนกด ให้รู้สึกว่าปุ่มตอบสนอง
+     สำคัญบนมือถือที่ไม่มี hover ให้เห็นว่ากดโดนแล้ว */
   .btn:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: scale(0.97);
   }
 
   .btn-primary {
-    @apply btn text-white;
+    @apply btn font-bold;
     background: var(--line-green);
+    color: var(--on-green);
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--line-green-press);
@@ -141,23 +228,31 @@ h1, h2, h3, .tabular {
   }
 
   .th {
-    @apply px-3 py-2.5 text-left text-xs font-medium;
+    @apply px-3 py-2.5 text-left text-xs;
     color: var(--ink-faint);
   }
   .td {
-    @apply px-3 py-2.5 text-sm;
+    @apply px-3 py-3 text-sm;
     color: var(--ink);
     line-height: var(--leading-tight);
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs;
     line-height: var(--leading-tight);
   }
+  .badge-ok    { background: var(--ok-bg);        color: var(--ok); }
+  .badge-warn  { background: var(--warn-bg);      color: var(--warn); }
+  .badge-quiet { background: var(--paper-sunken); color: var(--ink-muted); }
 
-  /* ราคา — องค์ประกอบที่คนซื้อของมองก่อนเสมอ ต้องใหญ่กว่าชื่อสินค้า */
-  .price {
-    @apply tabular text-xl font-semibold;
-    color: var(--ink);
+  /* แถบปุ่มติดขอบล่างจอ ใช้กับหน้ารายละเอียดและตะกร้า
+     env(safe-area-inset-bottom) เผื่อแถบ home indicator ของ iPhone
+     ถ้าไม่เผื่อ ปุ่มจะโดนแถบนั้นทับจนกดไม่โดน */
+  .dock {
+    @apply sticky bottom-0 z-20 border-t px-4 pt-3;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    border-color: var(--line);
+    background: color-mix(in srgb, var(--paper-raised) 92%, transparent);
+    backdrop-filter: blur(8px);
   }
 }

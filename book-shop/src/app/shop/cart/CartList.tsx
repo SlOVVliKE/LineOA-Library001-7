@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateCartItem } from '../actions'
+import { BookCover } from '@/components/BookCover'
 import { formatBaht } from '@/lib/money'
 
 interface Item {
@@ -27,37 +29,41 @@ export function CartList({ items }: { items: Item[] }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
       {items.map((item) => (
-        <div key={item.id} className="card flex gap-3">
-          <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded bg-neutral-100 text-[10px] text-neutral-400">
-            {item.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.coverUrl} alt="" className="h-full w-full rounded object-cover" />
-            ) : (
-              'ไม่มีปก'
-            )}
-          </div>
+        <div key={item.id} className="card flex gap-3.5">
+          <Link href={`/shop/books/${item.bookId}`} className="shrink-0">
+            <BookCover url={item.coverUrl} className="h-[92px] w-[62px] rounded-lg" />
+          </Link>
 
-          <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">{item.title}</div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Link href={`/shop/books/${item.bookId}`}>
+              <h3 className="t-title line-clamp-2 text-[15px]">{item.title}</h3>
+            </Link>
             {item.isPreorder && (
-              <span className="badge bg-amber-50 text-amber-700">สั่งจอง</span>
+              <span className="badge badge-warn mt-1 self-start">สั่งจอง</span>
             )}
-            <div className="mt-1 text-sm text-neutral-600">{formatBaht(item.price)}</div>
 
-            <div className="mt-2 flex items-center justify-between">
-              <div className="flex items-center rounded-lg border border-neutral-300">
+            {/* ราคารวมของรายการนี้ อยู่ใกล้ตัวเลือกจำนวน
+                ของเดิมวางไว้มุมขวาล่างสุดของการ์ด ห่างจากปุ่มบวกลบ
+                ทำให้กดเปลี่ยนจำนวนแล้วต้องกวาดตาไปอีกมุมเพื่อดูว่าเป็นเท่าไหร่ */}
+            <div className="mt-auto flex items-end justify-between gap-3 pt-2.5">
+              <div
+                className="flex items-center rounded-xl border"
+                style={{ borderColor: 'var(--line-strong)' }}
+              >
                 <button
-                  className="px-3 py-1.5 leading-none"
+                  aria-label="ลดจำนวน"
+                  className="h-11 w-11 text-lg leading-none transition active:scale-90 disabled:opacity-30"
                   onClick={() => change(item.id, item.qty - 1)}
-                  disabled={pending}
+                  disabled={pending || item.qty <= 1}
                 >
                   −
                 </button>
-                <span className="w-8 text-center text-sm">{item.qty}</span>
+                <span className="tabular w-8 text-center text-[15px]">{item.qty}</span>
                 <button
-                  className="px-3 py-1.5 leading-none"
+                  aria-label="เพิ่มจำนวน"
+                  className="h-11 w-11 text-lg leading-none transition active:scale-90 disabled:opacity-30"
                   onClick={() => change(item.id, item.qty + 1)}
                   disabled={pending}
                 >
@@ -65,18 +71,20 @@ export function CartList({ items }: { items: Item[] }) {
                 </button>
               </div>
 
+              <div className="price-sm">{formatBaht(item.qty * item.price)}</div>
+            </div>
+
+            <div className="mt-1.5 flex items-center justify-between">
+              <span className="t-micro">เล่มละ {formatBaht(item.price)}</span>
               <button
-                className="text-xs text-neutral-500 hover:text-red-600"
+                className="min-h-[36px] px-1 text-[13px] underline underline-offset-2"
+                style={{ color: 'var(--ink-faint)' }}
                 onClick={() => change(item.id, 0)}
                 disabled={pending}
               >
-                ลบ
+                เอาออก
               </button>
             </div>
-          </div>
-
-          <div className="shrink-0 self-end text-right font-medium">
-            {formatBaht(item.qty * item.price)}
           </div>
         </div>
       ))}

@@ -57,25 +57,38 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const shipment = ((order.shipments ?? []) as { tracking_no: string | null; status: string }[])[0]
 
   return (
-    <div className="space-y-4">
-      <Link href="/shop/orders" className="text-sm text-teal-700">← ออเดอร์ทั้งหมด</Link>
+    <div className="space-y-3">
+      <Link
+        href="/shop/orders"
+        className="inline-flex min-h-[44px] items-center text-[14px]"
+        style={{ color: 'var(--ink-muted)' }}
+      >
+        ← ออเดอร์ทั้งหมด
+      </Link>
 
-      <div className="card space-y-1">
-        <div className="flex items-center justify-between">
-          <span className="font-mono">{order.order_no as string}</span>
-          <span className={`badge ${ORDER_STATUS_STYLE[order.status as string] ?? ''}`}>
+      <div className="card">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="price">{formatBaht(Number(order.total))}</div>
+            <div className="t-meta mt-0.5 font-mono text-[12px]">
+              {order.order_no as string}
+            </div>
+          </div>
+          <span className={`badge shrink-0 ${ORDER_STATUS_STYLE[order.status as string] ?? ''}`}>
             {ORDER_STATUS_LABEL[order.status as string]}
           </span>
         </div>
-        <div className="text-sm text-neutral-500">
-          สั่งเมื่อ {formatDateTime(order.created_at as string)}
-        </div>
+
+        <p className="t-micro mt-2">สั่งเมื่อ {formatDateTime(order.created_at as string)}</p>
+
         {order.order_type === 'preorder' && (
-          <div className="mt-1 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div
+            className="mt-3 rounded-xl px-3.5 py-2.5 text-[13px]"
+            style={{ background: 'var(--warn-bg)', color: 'var(--warn)' }}
+          >
             <p>
-              คำสั่งซื้อแบบสั่งจอง · คาดว่าของเข้า{' '}
-              {formatDate(order.expected_release_date as string)}
-              {' '}— จัดส่งตามลำดับการจอง ใครจองก่อนได้ก่อน
+              สั่งจองล่วงหน้า · คาดว่าของเข้า{' '}
+              {formatDate(order.expected_release_date as string)} — จัดส่งตามลำดับการจอง
             </p>
             {order.status === 'preorder_waiting' && (
               <p className="mt-1">
@@ -83,7 +96,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 {formatDateTime(
                   ((order.preorder_queue ?? []) as { queued_at: string }[])[0]?.queued_at
                 )}
-                {' '}· เราจะแจ้งทันทีที่ของถึงร้าน
+                {' '}· เราจะแจ้งเข้า LINE ทันทีที่ของถึงร้าน
               </p>
             )}
           </div>
@@ -91,103 +104,156 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {(order.status === 'pending_payment' || isBalanceStage) && (
-        <div className="card space-y-3">
-          <h2 className="font-medium">
+        <section className="card space-y-3.5">
+          <h2 className="t-heading">
             {isBalanceStage
-              ? 'ของเข้าแล้ว — ชำระส่วนที่เหลือเพื่อให้เราจัดส่ง'
+              ? 'ชำระส่วนที่เหลือ'
               : order.is_deposit_only
                 ? 'ชำระมัดจำเพื่อยืนยันการจอง'
                 : 'ชำระเงิน'}
           </h2>
 
-          {order.is_deposit_only && (
-            <p className="rounded bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-              ยอดรวมทั้งสิ้น {formatBaht(Number(order.total))} ·
-              มัดจำ {formatBaht(Number(order.deposit_amount ?? 0))} ·
-              ส่วนที่เหลือ {formatBaht(Number(order.balance_due ?? 0))} เก็บตอนของเข้า
-            </p>
+          {isBalanceStage && (
+            <p className="t-meta">ของเข้าแล้ว ชำระส่วนที่เหลือเพื่อให้เราจัดส่งได้เลย</p>
           )}
 
-          <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-center">
-            <div className="text-xs text-teal-800">ยอดที่ต้องโอน</div>
-            <div className="text-2xl font-semibold text-teal-900">{formatBaht(amountToPay)}</div>
-            <p className="mt-1 text-xs text-teal-700">
-              กรุณาโอนยอดนี้ให้ตรงทุกสตางค์ — เศษสตางค์คือรหัสประจำคำสั่งซื้อนี้
-              ใช้จับคู่สลิปกับออเดอร์ให้อัตโนมัติ
+          {order.is_deposit_only && (
+            <div
+              className="space-y-1 rounded-xl px-3.5 py-2.5 text-[13px]"
+              style={{ background: 'var(--paper-sunken)', color: 'var(--ink-muted)' }}
+            >
+              <div className="flex justify-between">
+                <span>ยอดรวมทั้งสิ้น</span>
+                <span className="tabular">{formatBaht(Number(order.total))}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>มัดจำ</span>
+                <span className="tabular">{formatBaht(Number(order.deposit_amount ?? 0))}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>ส่วนที่เหลือ (เก็บตอนของเข้า)</span>
+                <span className="tabular">{formatBaht(Number(order.balance_due ?? 0))}</span>
+              </div>
+            </div>
+          )}
+
+          {/* ยอดที่ต้องโอนคือข้อมูลสำคัญที่สุดในหน้านี้ ทำให้ใหญ่ที่สุดและอยู่ในกรอบของตัวเอง
+              เศษสตางค์ที่ไม่ซ้ำใครคือสิ่งที่ทำให้ระบบจับคู่สลิปได้เอง
+              ถ้าลูกค้าปัดเศษทิ้ง ระบบจะจับคู่ไม่ได้แล้วต้องรอแอดมินตรวจมือ
+              คำอธิบายจึงต้องอยู่ติดกับตัวเลข ไม่ใช่ไปอยู่ท้ายหน้า */}
+          <div
+            className="rounded-2xl px-4 py-4 text-center"
+            style={{ background: 'var(--ok-bg)' }}
+          >
+            <div className="text-[13px]" style={{ color: 'var(--ok)' }}>ยอดที่ต้องโอน</div>
+            <div
+              className="tabular mt-1 text-[30px] font-bold"
+              style={{ color: 'var(--ok)' }}
+            >
+              {formatBaht(amountToPay)}
+            </div>
+            <p className="mt-2 text-[13px]" style={{ color: 'var(--ok)' }}>
+              โอนให้ตรงทุกสตางค์ เศษสตางค์คือรหัสประจำออเดอร์นี้
+              ระบบใช้จับคู่สลิปให้อัตโนมัติ
             </p>
           </div>
 
           {qrDataUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={qrDataUrl} alt="PromptPay QR" className="mx-auto w-56 rounded-lg border border-neutral-200" />
+            <div className="text-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrDataUrl}
+                alt="คิวอาร์โค้ดพร้อมเพย์"
+                className="mx-auto w-56 rounded-2xl border"
+                style={{ borderColor: 'var(--line)' }}
+              />
+              <p className="t-micro mt-2">สแกนด้วยแอปธนาคาร ยอดจะถูกกรอกให้อัตโนมัติ</p>
+            </div>
           )}
-          {qrError && <p className="text-center text-xs text-amber-700">{qrError}</p>}
+          {qrError && (
+            <p
+              className="rounded-xl px-3.5 py-2.5 text-[13px]"
+              style={{ background: 'var(--warn-bg)', color: 'var(--warn)' }}
+            >
+              {qrError}
+            </p>
+          )}
 
-          <SlipUpload
-            orderId={order.id as string}
-            purpose={isBalanceStage ? 'balance' : 'full'}
-          />
+          <div className="border-t pt-3.5" style={{ borderColor: 'var(--line)' }}>
+            <SlipUpload
+              orderId={order.id as string}
+              purpose={isBalanceStage ? 'balance' : 'full'}
+            />
+          </div>
 
           {payments.length > 0 && (
-            <div className="border-t border-neutral-100 pt-2 text-sm">
-              <div className="mb-1 font-medium">สลิปที่ส่งแล้ว</div>
+            <div className="border-t pt-3" style={{ borderColor: 'var(--line)' }}>
+              <div className="t-meta mb-1.5">สลิปที่ส่งแล้ว</div>
               {payments.map((p) => (
-                <div key={p.id} className="flex justify-between text-neutral-600">
-                  <span>
+                <div key={p.id} className="flex justify-between gap-3 py-1">
+                  <span className="t-meta">
                     {formatDateTime(p.created_at)}
-                    <span className="ml-1 text-xs text-neutral-400">
-                      ({PAYMENT_PURPOSE_LABEL[p.purpose] ?? p.purpose})
-                    </span>
+                    <span className="t-micro"> · {PAYMENT_PURPOSE_LABEL[p.purpose] ?? p.purpose}</span>
                   </span>
-                  <span>{PAYMENT_STATUS_LABEL[p.verify_status] ?? p.verify_status}</span>
+                  <span className="t-meta shrink-0">
+                    {PAYMENT_STATUS_LABEL[p.verify_status] ?? p.verify_status}
+                  </span>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {shipment?.tracking_no && (
-        <div className="card">
-          <h2 className="mb-1 font-medium">การจัดส่ง</h2>
-          <p className="text-sm">
+        <section className="card">
+          <h2 className="t-heading mb-1.5">การจัดส่ง</h2>
+          <p className="t-body">
             เลขพัสดุ <span className="font-mono">{shipment.tracking_no}</span>
           </p>
-        </div>
+        </section>
       )}
 
-      <div className="card space-y-2 text-sm">
-        <h2 className="font-medium">รายการสินค้า</h2>
+      <section className="card space-y-2.5">
+        <h2 className="t-heading">รายการสินค้า</h2>
         {((order.order_items ?? []) as { title_snapshot: string; qty: number; unit_price: number; line_total: number }[]).map(
           (it, i) => (
-            <div key={i} className="flex justify-between text-neutral-700">
-              <span className="min-w-0 truncate pr-2">
-                {it.title_snapshot} × {it.qty}
+            <div key={i} className="flex justify-between gap-3">
+              <span className="t-body line-clamp-2 flex-1">
+                {it.title_snapshot}
+                <span className="t-meta"> × {it.qty}</span>
               </span>
-              <span className="shrink-0">{formatBaht(Number(it.line_total))}</span>
+              <span className="tabular shrink-0 text-[15px]">
+                {formatBaht(Number(it.line_total))}
+              </span>
             </div>
           )
         )}
-        <div className="flex justify-between border-t border-neutral-100 pt-2 text-neutral-600">
-          <span>ค่าส่ง</span>
-          <span>{Number(order.shipping_fee) === 0 ? 'ฟรี' : formatBaht(Number(order.shipping_fee))}</span>
+        <div
+          className="flex justify-between border-t pt-2.5"
+          style={{ borderColor: 'var(--line)' }}
+        >
+          <span className="t-meta">ค่าส่ง</span>
+          <span className="tabular text-[15px]">
+            {Number(order.shipping_fee) === 0 ? 'ฟรี' : formatBaht(Number(order.shipping_fee))}
+          </span>
         </div>
-        <div className="flex justify-between text-base font-semibold">
-          <span>รวม</span>
-          <span>{formatBaht(Number(order.total))}</span>
+        <div className="flex items-center justify-between">
+          <span className="t-body">รวม</span>
+          <span className="price-sm">{formatBaht(Number(order.total))}</span>
         </div>
-      </div>
+      </section>
 
-      <div className="card text-sm">
-        <h2 className="mb-1 font-medium">ที่อยู่จัดส่ง</h2>
-        <p className="text-neutral-700">
+      <section className="card">
+        <h2 className="t-heading mb-1.5">ที่อยู่จัดส่ง</h2>
+        <p className="t-body">
           {addr.recipient_name} · {addr.phone}
           <br />
           {addr.line1} {addr.subdistrict} {addr.district}
           <br />
           {addr.province} {addr.postcode}
         </p>
-      </div>
+      </section>
     </div>
   )
 }

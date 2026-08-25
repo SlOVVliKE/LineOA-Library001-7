@@ -21,33 +21,48 @@ export default async function MyOrdersPage() {
 
   if (!orders?.length) {
     return (
-      <div className="card space-y-3 text-center">
-        <p className="text-neutral-600">ยังไม่มีคำสั่งซื้อ</p>
-        <Link href="/shop" className="btn-primary inline-flex">เลือกหนังสือ</Link>
+      <div className="card py-12 text-center">
+        <p className="t-body">ยังไม่มีคำสั่งซื้อ</p>
+        <p className="t-meta mt-1">เมื่อสั่งซื้อแล้ว สถานะทุกขั้นจะแสดงที่นี่</p>
+        <Link href="/shop" className="btn-primary mt-5 inline-flex">เลือกหนังสือ</Link>
       </div>
     )
   }
 
   return (
     <div className="space-y-3">
-      <h1 className="text-lg font-semibold">ออเดอร์ของฉัน</h1>
-      {orders.map((o) => (
-        <Link key={o.id as string} href={`/shop/orders/${o.id}`} className="card block hover:border-teal-400">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-sm">{o.order_no as string}</span>
-            <span className={`badge ${ORDER_STATUS_STYLE[o.status as string] ?? ''}`}>
-              {ORDER_STATUS_LABEL[o.status as string] ?? (o.status as string)}
-            </span>
-          </div>
-          <div className="mt-1 flex items-center justify-between text-sm text-neutral-600">
-            <span>{formatDateTime(o.created_at as string)}</span>
-            <span className="font-medium text-neutral-900">{formatBaht(Number(o.total))}</span>
-          </div>
-          {o.order_type === 'preorder' && (
-            <span className="badge mt-1 bg-amber-50 text-amber-700">สั่งจองล่วงหน้า</span>
-          )}
-        </Link>
-      ))}
+      <h1 className="t-heading">ออเดอร์ของฉัน</h1>
+
+      <div className="space-y-2.5">
+        {orders.map((o) => (
+          <Link
+            key={o.id as string}
+            href={`/shop/orders/${o.id}`}
+            className="card block transition active:scale-[0.99]"
+          >
+            {/* ยอดเงินขึ้นก่อนเลขที่ออเดอร์ เพราะเวลากลับมาดูรายการเก่า
+                คนจำยอดได้ แต่แทบไม่มีใครจำเลขที่ออเดอร์ */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="price-sm">{formatBaht(Number(o.total))}</div>
+                <div className="t-meta mt-0.5 font-mono text-[12px]">
+                  {o.order_no as string}
+                </div>
+              </div>
+              <span className={`badge shrink-0 ${ORDER_STATUS_STYLE[o.status as string] ?? ''}`}>
+                {ORDER_STATUS_LABEL[o.status as string] ?? (o.status as string)}
+              </span>
+            </div>
+
+            <div className="mt-2 flex items-center gap-2">
+              <span className="t-micro">{formatDateTime(o.created_at as string)}</span>
+              {o.order_type === 'preorder' && (
+                <span className="badge badge-warn">สั่งจอง</span>
+              )}
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }

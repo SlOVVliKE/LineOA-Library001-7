@@ -9,15 +9,19 @@ export interface Category {
 }
 
 /**
- * ฟิลเตอร์แบบติ๊กเลือกได้หลายอัน
+ * ฟิลเตอร์แบบเลือกได้หลายอัน
  *
  * ใช้ URL เป็นที่เก็บสถานะ ไม่ใช่ state ในหน้า เพราะ:
  *   - ลูกค้าแชร์ลิงก์ที่กรองไว้ให้เพื่อนได้
  *   - กดย้อนกลับแล้วฟิลเตอร์เดิมยังอยู่
  *   - หน้ารายการเป็น server component อยู่แล้ว ข้อมูลจึงมาจากฐานข้อมูลตรงๆ
  *
- * ติ๊กแล้วโหลดใหม่ทันที ไม่มีปุ่ม "ใช้ตัวกรอง" เพราะรายการหนังสือไม่ยาว
- * และการต้องกดยืนยันอีกครั้งทำให้คนเลิกใช้ฟิลเตอร์
+ * เปลี่ยนจากช่องติ๊กมาเป็นปุ่มกลม (chip) ด้วยสองเหตุผล
+ *   1) ช่องติ๊กเดิมกว้าง 16px ซึ่งเล็กกว่าระยะที่นิ้วแตะได้แม่นมาก
+ *      คนใช้ต้องเล็งหรือกดหลายครั้ง ทั้งที่ตัวหนังสือข้างๆ ก็กดได้
+ *      แต่ไม่มีอะไรบอกให้รู้
+ *   2) chip ที่ถูกเลือกเห็นชัดจากระยะสายตาปกติ ไม่ต้องเพ่งหาเครื่องหมายถูก
+ *      บนจอมือถือกลางแดดยิ่งต่างกันมาก
  */
 export function ShopFilters({ categories }: { categories: Category[] }) {
   const router = useRouter()
@@ -30,7 +34,7 @@ export function ShopFilters({ categories }: { categories: Category[] }) {
 
   function apply(next: URLSearchParams) {
     const s = next.toString()
-    start(() => router.push(s ? `/shop?${s}` : '/shop'))
+    start(() => router.push(s ? `/shop?${s}` : '/shop', { scroll: false }))
   }
 
   function toggleMulti(key: string, value: string, checked: boolean) {
@@ -49,17 +53,22 @@ export function ShopFilters({ categories }: { categories: Category[] }) {
     apply(next)
   }
 
-  const hasFilter = modes.length > 0 || cats.length > 0 || sortNew
+  const activeCount = modes.length + cats.length + (sortNew ? 1 : 0)
 
   return (
-    <div className={`card space-y-3 ${pending ? 'opacity-60' : ''}`}>
+    <div className={`card space-y-3 transition-opacity ${pending ? 'opacity-50' : ''}`}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">ตัวกรอง</span>
-        {hasFilter && (
+        <span className="t-meta">
+          ตัวกรอง{activeCount > 0 && ` · เลือกไว้ ${activeCount}`}
+        </span>
+        {activeCount > 0 && (
           <button
             type="button"
-            className="text-xs text-teal-700 hover:underline"
+            className="min-h-[36px] rounded-lg px-2 text-[13px] underline underline-offset-2"
+            style={{ color: 'var(--ink-muted)' }}
             onClick={() => {
+              // เก็บคำค้นไว้ ล้างเฉพาะตัวกรอง — คนกดปุ่มนี้ตั้งใจล้างตัวกรอง
+              // ไม่ได้ตั้งใจให้คำที่พิมพ์ไปแล้วหายไปด้วย
               const next = new URLSearchParams()
               const q = params.get('q')
               if (q) next.set('q', q)
@@ -71,33 +80,26 @@ export function ShopFilters({ categories }: { categories: Category[] }) {
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <div className="text-xs text-neutral-500">สถานะสินค้า</div>
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          <Check
-            label="พร้อมส่ง"
-            checked={modes.includes('stock')}
-            onChange={(c) => toggleMulti('mode', 'stock', c)}
-          />
-          <Check
-            label="เปิดจอง"
-            checked={modes.includes('preorder')}
-            onChange={(c) => toggleMulti('mode', 'preorder', c)}
-          />
-          <Check
-            label="เรียงของเข้าใหม่ก่อน"
-            checked={sortNew}
-            onChange={toggleSort}
-          />
-        </div>
+      <div className="flex flex-wrap gap-2">
+        <Chip
+          label="พร้อมส่ง"
+          checked={modes.includes('stock')}
+          onChange={(c) => toggleMulti('mode', 'stock', c)}
+        />
+        <Chip
+          label="เปิดจอง"
+          checked={modes.includes('preorder')}
+          onChange={(c) => toggleMulti('mode', 'preorder', c)}
+        />
+        <Chip label="มาใหม่ก่อน" checked={sortNew} onChange={toggleSort} />
       </div>
 
       {categories.length > 0 && (
-        <div className="space-y-1.5 border-t border-neutral-200 pt-3">
-          <div className="text-xs text-neutral-500">หมวดหมู่ (เลือกได้หลายหมวด)</div>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
+        <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--line)' }}>
+          <div className="t-micro">หมวดหมู่</div>
+          <div className="flex flex-wrap gap-2">
             {categories.map((c) => (
-              <Check
+              <Chip
                 key={c.id}
                 label={c.name}
                 checked={cats.includes(c.id)}
@@ -111,7 +113,18 @@ export function ShopFilters({ categories }: { categories: Category[] }) {
   )
 }
 
-function Check({
+/**
+ * ปุ่มกรองแบบ chip
+ *
+ * ใช้ <button> ที่มี aria-pressed แทน <input type="checkbox">
+ * เพราะสิ่งที่เกิดขึ้นจริงคือ "กดแล้วหน้าเปลี่ยนทันที" ซึ่งเป็นพฤติกรรมของปุ่ม
+ * ไม่ใช่ช่องติ๊กที่รอกดยืนยันทีหลัง โปรแกรมอ่านหน้าจอจะได้บอกตรงกับที่เกิดขึ้น
+ *
+ * สูง 40px — ต่ำกว่า 44px นิดหน่อยเพราะ chip เรียงหลายอันในแถวเดียว
+ * ถ้าสูงเต็ม 44 ทุกอันจะกินพื้นที่จนดันรายการหนังสือตกจอ
+ * ระยะห่างระหว่าง chip 8px ช่วยกันกดพลาดไปยังอันข้างๆ อยู่แล้ว
+ */
+function Chip({
   label,
   checked,
   onChange,
@@ -121,14 +134,22 @@ function Check({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-neutral-300 text-teal-700 focus:ring-teal-600"
-      />
-      <span className={checked ? 'text-teal-800' : 'text-neutral-700'}>{label}</span>
-    </label>
+    <button
+      type="button"
+      aria-pressed={checked}
+      onClick={() => onChange(!checked)}
+      className="min-h-[40px] rounded-full border px-3.5 text-[14px] transition active:scale-95"
+      style={
+        checked
+          ? { background: 'var(--ink)', borderColor: 'var(--ink)', color: '#fff' }
+          : {
+              background: 'var(--paper-raised)',
+              borderColor: 'var(--line-strong)',
+              color: 'var(--ink-muted)',
+            }
+      }
+    >
+      {label}
+    </button>
   )
 }

@@ -19,12 +19,14 @@ export function SlipUpload({
       <input type="hidden" name="order_id" value={orderId} />
       <input type="hidden" name="purpose" value={purpose} />
       <label className="label">แนบสลิปโอนเงิน</label>
+      {/* ปุ่มเลือกไฟล์ที่เบราว์เซอร์สร้างให้เองมักเล็กและหน้าตาไม่เหมือนปุ่มอื่นในหน้า
+          จัดสไตล์ผ่าน ::file-selector-button ให้สูงพอแตะและกลืนกับปุ่มที่เหลือ */}
       <input
         type="file"
         name="slip"
         accept="image/jpeg,image/png,image/webp,application/pdf"
         required
-        className="input file:mr-3 file:rounded file:border-0 file:bg-neutral-100 file:px-3 file:py-1 file:text-sm"
+        className="input file-input flex items-center py-2.5 text-[14px]"
       />
       <Alert ok={state.ok} message={state.message} />
       <SubmitButton>ส่งสลิป</SubmitButton>

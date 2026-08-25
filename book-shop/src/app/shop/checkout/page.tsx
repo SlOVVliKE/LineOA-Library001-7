@@ -51,45 +51,65 @@ export default async function CheckoutPage() {
     .maybeSingle()
 
   return (
-    <div className="space-y-4">
-      <Link href="/shop/cart" className="text-sm text-teal-700">← กลับตะกร้า</Link>
-      <h1 className="text-lg font-semibold">ยืนยันคำสั่งซื้อ</h1>
+    <div className="space-y-3">
+      <Link
+        href="/shop/cart"
+        className="inline-flex min-h-[44px] items-center text-[14px]"
+        style={{ color: 'var(--ink-muted)' }}
+      >
+        ← กลับตะกร้า
+      </Link>
+
+      <h1 className="t-heading">ยืนยันคำสั่งซื้อ</h1>
 
       {summary.map((g) => (
-        <div key={g.label} className="card space-y-2 text-sm">
-          <div className="font-medium">
-            {g.label}
+        <section key={g.label} className="card space-y-2.5">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="t-body">{g.label}</h2>
             {summary.length > 1 && (
-              <span className="ml-2 text-xs font-normal text-neutral-500">
-                (แยกเป็นคนละคำสั่งซื้อ)
-              </span>
+              <span className="t-micro">แยกเป็นคนละคำสั่งซื้อ</span>
             )}
           </div>
+
           {g.rows.map((r, i) => (
-            <div key={i} className="flex justify-between text-neutral-700">
-              <span className="min-w-0 truncate pr-2">
-                {r.books!.title} × {r.qty}
+            <div key={i} className="flex justify-between gap-3">
+              {/* ชื่อหนังสือขึ้นได้สองบรรทัด ไม่ตัดด้วยจุดไข่ปลา
+                  ภาษาไทยไม่มีช่องว่างระหว่างคำ ตัดกลางคำแล้วเดาไม่ออกว่าเล่มไหน
+                  ซึ่งเป็นปัญหาตรงหน้ายืนยันคำสั่งซื้อพอดี เพราะเป็นจุดที่ต้องตรวจ */}
+              <span className="t-body line-clamp-2 flex-1">
+                {r.books!.title}
+                <span className="t-meta"> × {r.qty}</span>
               </span>
-              <span className="shrink-0">
+              <span className="tabular shrink-0 text-[15px]">
                 {formatBaht(round2(r.qty * Number(r.books!.sell_price)))}
               </span>
             </div>
           ))}
-          <div className="flex justify-between border-t border-neutral-100 pt-2 text-neutral-600">
-            <span>ค่าส่ง</span>
-            <span>{g.shipping === 0 ? 'ฟรี' : formatBaht(g.shipping)}</span>
+
+          <div
+            className="flex justify-between border-t pt-2.5"
+            style={{ borderColor: 'var(--line)' }}
+          >
+            <span className="t-meta">ค่าส่ง</span>
+            <span className="tabular text-[15px]">
+              {g.shipping === 0 ? 'ฟรี' : formatBaht(g.shipping)}
+            </span>
           </div>
-          <div className="flex justify-between font-medium">
-            <span>รวม</span>
-            <span>{formatBaht(g.total)}</span>
+          <div className="flex items-center justify-between">
+            <span className="t-body">รวม</span>
+            <span className="price-sm">{formatBaht(g.total)}</span>
           </div>
-        </div>
+        </section>
       ))}
 
-      <div className="card flex justify-between text-base font-semibold">
-        <span>ยอดรวมทั้งหมด</span>
-        <span>{formatBaht(grandTotal)}</span>
-      </div>
+      {/* แสดงยอดรวมทั้งหมดเฉพาะตอนมีมากกว่าหนึ่งคำสั่งซื้อ
+          ถ้ามีใบเดียว การ์ดนี้จะซ้ำกับบรรทัด "รวม" ข้างบนแบบไม่ได้ให้ข้อมูลใหม่ */}
+      {summary.length > 1 && (
+        <div className="card flex items-center justify-between">
+          <span className="t-body">ยอดรวมทั้งหมด</span>
+          <span className="price">{formatBaht(grandTotal)}</span>
+        </div>
+      )}
 
       <CheckoutForm
         defaults={

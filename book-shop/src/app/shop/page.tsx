@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCustomer } from '@/lib/customer/session'
 import { CustomerGate } from './CustomerGate'
 import { ShopFilters } from './ShopFilters'
-import { formatBaht, formatDate } from '@/lib/money'
+import { BookCard, type BookCardData } from '@/components/BookCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,17 +59,13 @@ export default async function ShopHome({
     supabase.from('categories').select('id, name').order('sort_order'),
   ])
 
-  const emptyMessage = q
-    ? `ไม่พบหนังสือที่ตรงกับ "${q}"`
-    : modes.length === 1 && modes[0] === 'preorder'
-      ? 'ตอนนี้ยังไม่มีหนังสือเปิดให้จอง'
-      : modes.length === 1 && modes[0] === 'stock'
-        ? 'ตอนนี้ยังไม่มีหนังสือพร้อมส่ง'
-        : 'ยังไม่มีหนังสือที่ตรงกับตัวกรอง'
+  const hasFilter = Boolean(q) || cats.length > 0 || modes.length === 1
 
   return (
-    <div className="space-y-4">
-      <form className="flex gap-2">
+    <div className="space-y-3">
+      {/* ช่องค้นหา — ปุ่มอยู่ในกรอบเดียวกับช่องกรอก
+          บนมือถือปุ่มแยกจะกินความกว้างจนพิมพ์ได้ไม่กี่ตัวอักษร */}
+      <form className="relative" role="search">
         {/* คงตัวกรองไว้ตอนกดค้นหา ไม่งั้นค้นทีเดียวหลุดกลับไปหน้ารวม */}
         {cats.map((c) => (
           <input key={c} type="hidden" name="cat" value={c} />
@@ -78,64 +74,71 @@ export default async function ShopHome({
           <input key={m} type="hidden" name="mode" value={m} />
         ))}
         {sortByNew && <input type="hidden" name="sort" value="new" />}
+
         <input
           name="q"
           defaultValue={q ?? ''}
           placeholder="ค้นหาชื่อหนังสือ ผู้แต่ง หรือ ISBN"
-          className="input"
+          className="input pr-[84px]"
+          enterKeyHint="search"
         />
-        <button className="btn-ghost shrink-0">ค้นหา</button>
+        {/* ปุ่มสูง 40px ในช่องกรอกที่สูง 48px — เตี้ยกว่าเกณฑ์ 44px เล็กน้อย
+            แต่ยอมรับได้เพราะเป็นปุ่มในกรอบ ไม่มีปุ่มอื่นอยู่ติดให้กดพลาด
+            และกด Enter บนแป้นพิมพ์ก็ค้นได้เหมือนกัน */}
+        <button
+          className="absolute right-1.5 top-1/2 flex h-10 -translate-y-1/2 items-center
+                     rounded-lg px-3.5 text-[14px]"
+          style={{ background: 'var(--paper-sunken)', color: 'var(--ink)' }}
+        >
+          ค้นหา
+        </button>
       </form>
 
-      <Suspense fallback={<div className="card text-sm text-neutral-400">กำลังโหลดตัวกรอง...</div>}>
+      <Suspense
+        fallback={
+          <div className="card t-meta">กำลังโหลดตัวกรอง...</div>
+        }
+      >
         <ShopFilters categories={(categories ?? []) as { id: string; name: string }[]} />
       </Suspense>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {(books ?? []).map((b) => {
-          const available = Number(b.available_to_sell ?? 0)
-          const isPreorder = b.stock_mode !== 'stock'
-          return (
-            <Link
-              key={b.id as string}
-              href={`/shop/books/${b.id}`}
-              className="card flex gap-3 hover:border-teal-400"
-            >
-              <div className="flex h-24 w-16 shrink-0 items-center justify-center rounded bg-neutral-100 text-[10px] text-neutral-400">
-                {b.cover_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.cover_url as string} alt="" className="h-full w-full rounded object-cover" />
-                ) : (
-                  'ไม่มีปก'
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{b.title as string}</div>
-                <div className="truncate text-xs text-neutral-500">
-                  {(b.author as string) ?? '—'}
-                </div>
-                <div className="mt-2 font-semibold text-teal-800">
-                  {formatBaht(Number(b.sell_price))}
-                </div>
-                <div className="mt-1 text-xs">
-                  {isPreorder ? (
-                    <span className="text-amber-700">
-                      เปิดจอง · ของเข้า {formatDate(b.preorder_release_date as string)}
-                    </span>
-                  ) : available > 0 ? (
-                    <span className="text-teal-700">พร้อมส่ง (เหลือ {available} เล่ม)</span>
-                  ) : (
-                    <span className="text-neutral-400">สินค้าหมด</span>
-                  )}
-                </div>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+      {books?.length ? (
+        <>
+          <p className="t-micro px-1">พบ {books.length} เล่ม</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {books.map((b) => (
+              <BookCard key={b.id as string} book={b as unknown as BookCardData} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <EmptyState query={q} hasFilter={hasFilter} />
+      )}
+    </div>
+  )
+}
 
-      {!books?.length && (
-        <p className="card text-center text-sm text-neutral-500">{emptyMessage}</p>
+/**
+ * หน้าจอตอนไม่เจอของ
+ *
+ * ของเดิมขึ้นข้อความบรรทัดเดียวแล้วจบ ลูกค้าที่พิมพ์ผิดจะไม่รู้ว่าต้องทำอะไรต่อ
+ * ตรงนี้เลยบอกทางออกให้เสมอ — ถ้ามีตัวกรองอยู่ก็เสนอให้ล้าง
+ */
+function EmptyState({ query, hasFilter }: { query?: string; hasFilter: boolean }) {
+  return (
+    <div className="card py-10 text-center">
+      <p className="t-body">
+        {query ? `ไม่พบหนังสือที่ตรงกับ "${query}"` : 'ยังไม่มีหนังสือที่ตรงกับตัวกรอง'}
+      </p>
+      <p className="t-meta mt-1">
+        {query
+          ? 'ลองพิมพ์คำสั้นลง หรือค้นด้วยชื่อผู้แต่งแทน'
+          : 'ลองเอาตัวกรองบางอันออกดู'}
+      </p>
+      {hasFilter && (
+        <Link href="/shop" className="btn-ghost mt-4 inline-flex">
+          ดูหนังสือทั้งหมด
+        </Link>
       )}
     </div>
   )
