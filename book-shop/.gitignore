@@ -8,3 +8,9 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 supabase/.temp/
+
+# ผลลัพธ์ build ของ Cloudflare adapter — สร้างใหม่ทุกครั้ง ไม่ต้องเก็บ
+.open-next/
+.wrangler/
+# ตัวแปรลับตอนรัน worker ในเครื่อง ห้ามขึ้น git เด็ดขาด
+.dev.vars

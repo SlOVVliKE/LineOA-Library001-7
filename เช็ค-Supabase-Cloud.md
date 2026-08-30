@@ -115,7 +115,7 @@ npx supabase db push
 **ข้อ 8–9 ไม่ผ่าน → ยังไม่มีข้อมูลหนังสือ**
 
 เป็นเรื่องปกติ ข้อมูลตัวอย่างตั้งใจไม่ให้ขึ้น cloud
-เข้าหลังบ้านที่ `https://libraryforu.netlify.app/admin` แล้วเพิ่มหมวดหมู่กับหนังสือจริงเอง
+เข้าหลังบ้านที่ `https://libraryforu.thirakan-weef64.workers.dev/admin` แล้วเพิ่มหมวดหมู่กับหนังสือจริงเอง
 
 **ข้อ 10 ไม่ผ่าน → ที่เก็บไฟล์ยังไม่ถูกสร้าง**
 
@@ -128,14 +128,23 @@ npx supabase db push
 
 ## เช็คเพิ่มอีก 2 อย่างที่ SQL ตอบให้ไม่ได้
 
-**ค่า environment ใน Netlify ชี้มาที่ cloud จริงไหม**
+**ค่า environment ที่ใช้จริง ชี้มาที่ cloud จริงไหม**
 
 ไปที่ **Project Settings → API** ใน Supabase จด Project URL ไว้
-แล้วเทียบกับค่า `NEXT_PUBLIC_SUPABASE_URL` ใน Netlify
+แล้วเทียบกับ `NEXT_PUBLIC_SUPABASE_URL` **ทั้งสองที่**
+
+```cmd
+cd book-shop
+npx wrangler secret list
+```
+
+ดูว่ามีชื่อครบ (คำสั่งนี้ไม่แสดงค่า) แล้วเทียบค่าจริงใน `.env.local` ของคุณเอง
+ต้องตรงกันทั้งคู่ เพราะตัวที่ขึ้นต้น `NEXT_PUBLIC_` ถูกฝังตอน build จาก `.env.local`
+ส่วน secret คือค่าที่ใช้ตอนรัน
 ถ้ายังเป็น `http://127.0.0.1:54321` แปลว่าเว็บกำลังคุยกับฐานข้อมูลบนเครื่องคุณ ซึ่งเซิร์ฟเวอร์มองไม่เห็น
 
 **หน้าร้านดึงข้อมูลได้จริงไหม**
 
-เปิด `https://libraryforu.netlify.app/shop` จากแอป LINE
+เปิด `https://libraryforu.thirakan-weef64.workers.dev/shop` จากแอป LINE
 ถ้าเห็นรายการหนังสือ = ทุกชั้นเชื่อมต่อกันครบแล้ว
 ถ้าหน้าว่างทั้งที่ข้อ 9 ผ่าน ให้ดู **Logs → Postgres** ใน Supabase ว่ามี error อะไร

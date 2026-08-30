@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic'
  *
  * ลูกค้าไม่ได้รอ cron นี้ เพราะแจ้งเตือนถูกส่งทันทีตอนสถานะเปลี่ยนอยู่แล้ว
  * ตัวนี้มีไว้เก็บข้อความที่ส่งพลาดตอนนั้น (เช่น LINE ล่มชั่วขณะ) มาส่งซ้ำ
- * ตั้งเวลาไว้ที่ netlify.toml → [functions."cron-notifications"]
+ * ตั้งเวลาไว้ที่ wrangler.jsonc → triggers.crons ("0 * * * *")
+ * และ custom-worker.ts เป็นตัวเรียก route นี้ตอนถึงเวลา
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET

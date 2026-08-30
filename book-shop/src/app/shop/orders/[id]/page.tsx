@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCustomer } from '@/lib/customer/session'
 import { CustomerGate } from '../../CustomerGate'
 import { SlipUpload } from './SlipUpload'
-import { buildPromptPayQrDataUrl, payableAmount } from '@/lib/payment/promptpay'
+import { buildPromptPayQrSvg, payableAmount } from '@/lib/payment/promptpay'
 import { formatBaht, formatDateTime, formatDate } from '@/lib/money'
 import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, PAYMENT_STATUS_LABEL, PAYMENT_PURPOSE_LABEL } from '@/lib/orderStatus'
 
@@ -41,11 +41,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     : Number(order.deposit_amount ?? order.total)
   const amountToPay = payableAmount(dueNow, order.order_no as string)
 
-  let qrDataUrl: string | null = null
+  let qrSvg: string | null = null
   let qrError: string | null = null
   if (order.status === 'pending_payment' || isBalanceStage) {
     try {
-      qrDataUrl = await buildPromptPayQrDataUrl(amountToPay)
+      const svg = await buildPromptPayQrSvg(amountToPay)
+      // ด่านกันพลาด: SVG ตัวนี้สร้างจากไลบรารีของเราเองโดยมีอินพุตแค่
+      // PROMPTPAY_ID (จาก env) กับตัวเลขยอดเงิน ไม่มีข้อมูลจากลูกค้าเลย
+      // แต่เพราะเราจะฝังมันแบบ raw HTML จึงเช็คซ้ำอีกชั้นว่าหน้าตาถูกต้อง
+      // ก่อนปล่อยเข้าหน้าเว็บ ถ้าไลบรารีเปลี่ยนพฤติกรรมวันไหนจะได้ไม่หลุด
+      qrSvg = svg.startsWith('<svg') && !/<script/i.test(svg) ? svg : null
+      if (!qrSvg) qrError = 'สร้างคิวอาร์ไม่สำเร็จ — โอนตามยอดด้านบนได้เลย'
     } catch {
       qrError = 'ยังไม่ได้ตั้งค่า PROMPTPAY_ID — โอนตามเลขบัญชีที่แอดมินแจ้งได้เลย'
     }
@@ -158,14 +164,21 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </p>
           </div>
 
-          {qrDataUrl && (
+          {qrSvg && (
             <div className="text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrDataUrl}
-                alt="คิวอาร์โค้ดพร้อมเพย์"
-                className="mx-auto w-56 rounded-2xl border"
+              {/* ฝัง SVG ตรงๆ ไม่ผ่าน <img> เพื่อให้เบราว์เซอร์วาดเป็นเวกเตอร์จริง
+                  พื้นขาวรอบโค้ดคือส่วนหนึ่งของมาตรฐาน QR (quiet zone)
+                  ห้ามตัดออก ไม่งั้นแอปธนาคารบางตัวจะอ่านไม่ออก */}
+              {/* SVG ที่ได้มามีแต่ viewBox ไม่มี width/height ติดมาด้วย
+                  ถ้าปล่อยไว้เบราว์เซอร์จะให้ขนาด default 300×150 แล้วบี้เป็นสี่เหลี่ยมผืนผ้า
+                  บังคับ w-full h-auto ให้มันคำนวณสูงจากสัดส่วนใน viewBox เอง */}
+              <div
+                className="mx-auto w-56 overflow-hidden rounded-2xl border bg-white p-2
+                           [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
                 style={{ borderColor: 'var(--line)' }}
+                role="img"
+                aria-label="คิวอาร์โค้ดพร้อมเพย์"
+                dangerouslySetInnerHTML={{ __html: qrSvg }}
               />
               <p className="t-micro mt-2">สแกนด้วยแอปธนาคาร ยอดจะถูกกรอกให้อัตโนมัติ</p>
             </div>

@@ -26,7 +26,24 @@ export function buildPromptPayPayload(amount: number): string {
   return generatePayload(id, { amount })
 }
 
-export async function buildPromptPayQrDataUrl(amount: number): Promise<string> {
+/**
+ * สร้าง QR เป็น SVG ไม่ใช่ PNG
+ *
+ * เหตุผลข้อแรก — ของเดิมใช้ QRCode.toDataURL() ซึ่งวาดลงบน <canvas>
+ * บน Cloudflare Workers ไม่มี canvas ฟังก์ชันนี้จะโยน
+ * "You need to specify a canvas element" ทันที
+ * และมันพังตอน runtime ไม่ใช่ตอน build แปลว่าจะไม่มีใครรู้จนกว่า
+ * ลูกค้าจะกดเข้าหน้าจ่ายเงินแล้วเจอหน้าเปล่า
+ *
+ * เหตุผลข้อสอง — SVG ดีกว่า PNG สำหรับ QR อยู่แล้วถึงไม่ย้ายโฮสต์
+ *   PNG data URL: ~15,000 bytes  ซูมแล้วเบลอ
+ *   SVG:           ~1,950 bytes  คมทุกระดับ
+ * QR ที่เบลอ = แอปธนาคารสแกนยากขึ้น ซึ่งเป็นสิ่งสุดท้ายที่เราอยากให้เกิด
+ *
+ * ไม่ส่ง width เข้าไป เพื่อให้ได้ viewBox ล้วนๆ แล้วค่อยกำหนดขนาดด้วย CSS
+ * (ไลบรารีใส่ shape-rendering="crispEdges" มาให้แล้ว ซึ่งถูกต้องสำหรับ QR)
+ */
+export async function buildPromptPayQrSvg(amount: number): Promise<string> {
   const payload = buildPromptPayPayload(amount)
-  return QRCode.toDataURL(payload, { width: 512, margin: 1 })
+  return QRCode.toString(payload, { type: 'svg', margin: 1 })
 }

@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
  *
  * ไม่ต้องยิงถี่ เพราะทุกจุดที่คำนวณของคงเหลือกรอง expires_at > now() อยู่แล้ว
  * แถวที่หมดอายุจึงไม่เคยทำให้ยอดคงเหลือผิด — งานนี้คือการเก็บกวาดตาราง
- * ตั้งไว้วันละครั้งใน netlify.toml
+ * ตั้งไว้วันละครั้งใน wrangler.jsonc → triggers.crons ("20 3 * * *" = 10:20 น. ไทย)
  *
  * ป้องกันด้วย CRON_SECRET เพราะ endpoint นี้เปิดสาธารณะ
  */

@@ -10,6 +10,33 @@
 | [`book-shop/`](./book-shop) | ซอร์สโค้ดทั้งหมด — Next.js 15 + Supabase · **เริ่มอ่านที่ [`book-shop/README.md`](./book-shop/README.md)** |
 | [`แผนพัฒนาเว็บขายหนังสือ-LINE-OA.md`](./แผนพัฒนาเว็บขายหนังสือ-LINE-OA.md) | เอกสารแผนฉบับเต็ม — ขอบเขต, สถาปัตยกรรม, ข้อกฎหมาย, timeline, ค่าใช้จ่าย |
 
+## เว็บจริง
+
+| | |
+|---|---|
+| ที่อยู่ | <https://libraryforu.thirakan-weef64.workers.dev> |
+| โฮสต์ | Cloudflare Workers ($5/เดือน) — ย้ายมาจาก Netlify ส.ค. 2569 |
+| ฐานข้อมูล | Supabase Cloud (Singapore) |
+| LINE OA | ReadUP · LIFF `2011334191-2F8gRIx0` |
+
+**การ push ขึ้น GitHub ไม่ทำให้เว็บจริงเปลี่ยน** — Cloudflare ไม่ได้ต่อ auto-deploy ไว้
+ต้องสั่ง deploy เสมอ วิธีที่ง่ายที่สุดคือดับเบิลคลิก `deploy-check-and-push.cmd`
+ซึ่งตรวจ type → build → push → deploy ให้ครบในครั้งเดียว
+
+หรือสั่งเองที่โฟลเดอร์ `book-shop`
+
+```bash
+npm run cf:preview   # รันในเครื่องด้วย runtime จริงของ Cloudflare
+npm run cf:deploy    # build แล้วขึ้นเว็บจริง
+npx wrangler tail    # ดู log สดจากเว็บจริง
+```
+
+เอกสารที่เกี่ยวข้อง — [`คู่มือย้ายไป-Cloudflare.md`](./คู่มือย้ายไป-Cloudflare.md) (ขั้นตอน deploy + เช็คลิสต์)
+· [`แผนย้ายไป-Cloudflare-Workers.md`](./แผนย้ายไป-Cloudflare-Workers.md) (เหตุผลและตัวเลขที่วัดได้)
+· [`คู่มือขึ้นเซิร์ฟเวอร์.md`](./คู่มือขึ้นเซิร์ฟเวอร์.md) (ภาพรวมทั้งระบบ)
+
+---
+
 ## เริ่มใช้งานเร็วสุด
 
 ต้องมี [Node.js LTS](https://nodejs.org) และ [Docker Desktop](https://www.docker.com/products/docker-desktop) เปิดค้างไว้
