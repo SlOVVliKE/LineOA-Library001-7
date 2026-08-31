@@ -1,12 +1,18 @@
 @echo off
 REM ============================================================
-REM  Check, push to GitHub, then deploy to Cloudflare Workers.
+REM  Check, then push to GitHub. Cloudflare builds and deploys.
 REM  Repo: https://github.com/SlOVVliKE/LineOA-Library001-7.git
 REM
-REM  IMPORTANT - this changed when the site moved off Netlify.
-REM  Netlify used to build and publish automatically on every push.
-REM  Cloudflare does NOT. Pushing to GitHub alone changes nothing
-REM  that customers can see. The deploy step below is what ships.
+REM  WHY THERE IS NO DEPLOY STEP HERE ANYMORE
+REM  Deploying from this machine is impossible: Device Guard /
+REM  WDAC policy blocks workerd.exe, which opennextjs-cloudflare
+REM  deploy has to launch. See "ตั้งค่า-Workers-Builds.md".
+REM  Cloudflare Workers Builds now builds and deploys from GitHub
+REM  instead, on their Linux builders.
+REM
+REM  So: the live site updates a few minutes AFTER this finishes,
+REM  not the moment it finishes. Watch the build at
+REM  Workers - libraryforu - Deployments - View build history.
 REM
 REM  ASCII-only on purpose (Windows console encoding).
 REM  Double-click this file, or pass a commit message:
@@ -20,13 +26,13 @@ set REPO=https://github.com/SlOVVliKE/LineOA-Library001-7.git
 
 echo.
 echo ============================================
-echo   Step 1 of 4 : type check
+echo   Step 1 of 3 : type check
 echo ============================================
 cd book-shop
 call npx.cmd tsc --noEmit
 if errorlevel 1 (
   echo.
-  echo FAILED: type errors above. Nothing was pushed or deployed.
+  echo FAILED: type errors above. Nothing was pushed.
   cd ..
   goto :done
 )
@@ -34,15 +40,19 @@ echo     OK
 
 echo.
 echo ============================================
-echo   Step 2 of 4 : build for Cloudflare
+echo   Step 2 of 3 : build for Cloudflare
 echo ============================================
 REM  This runs "next build" AND bundles the Worker, so it checks the
-REM  exact artifact that gets deployed - not just the Next.js output.
-REM  Step 4 then uploads what was built here, so nothing is built twice.
+REM  exact artifact Cloudflare will produce - not just Next.js output.
+REM  Cloudflare builds again on its own machine; this run is purely a
+REM  local check so a broken build never reaches GitHub.
+REM
+REM  This step does NOT need workerd, which is why it still works here
+REM  even though deploying does not.
 call npx.cmd opennextjs-cloudflare build
 if errorlevel 1 (
   echo.
-  echo FAILED: the build broke. Nothing was pushed or deployed.
+  echo FAILED: the build broke. Nothing was pushed.
   cd ..
   goto :done
 )
@@ -52,7 +62,7 @@ cd ..
 
 echo.
 echo ============================================
-echo   Step 3 of 4 : push to GitHub
+echo   Step 3 of 3 : push to GitHub
 echo ============================================
 
 where git >nul 2>&1
@@ -111,39 +121,26 @@ if errorlevel 1 (
   echo   - Sign-in window did not appear or was cancelled
   echo   - Remote is ahead: run  git pull --rebase origin main  then try again
   echo   - No permission on that repository
-  echo.
-  echo STOPPING: not deploying, because the code on GitHub and the
-  echo code about to go live would not match.
   goto :done
 )
 echo     Pushed - OK
 
 echo.
 echo ============================================
-echo   Step 4 of 4 : deploy to Cloudflare
+echo   Done - Cloudflare is building now
 echo ============================================
-cd book-shop
-call npm.cmd run cf:deploy-only
-if errorlevel 1 (
-  echo.
-  echo FAILED to deploy. The code IS on GitHub but the live site was
-  echo NOT updated. Fix the error, then run:  npm run cf:deploy
-  echo If you are not signed in, run:         npx wrangler login
-  cd ..
-  goto :done
-)
-cd ..
-
+echo   The live site is NOT updated yet. Cloudflare picks up the
+echo   commit and builds it, which takes about 2-3 minutes.
 echo.
-echo ============================================
-echo   Done - live site updated
-echo ============================================
+echo   Watch the build:
+echo     Workers - libraryforu - Deployments - View build history
+echo.
+echo   Then check for problems:
+echo     Workers - libraryforu - Metrics - Errors
+echo     Watch for "exceededCpu".
+echo.
 echo   https://libraryforu.thirakan-weef64.workers.dev
 echo   https://github.com/SlOVVliKE/LineOA-Library001-7
-echo.
-echo   Check it worked:
-echo     Cloudflare dashboard - Workers - libraryforu - Metrics
-echo     Watch for "exceededCpu" under Errors.
 
 :done
 echo.

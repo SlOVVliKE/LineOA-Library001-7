@@ -19,15 +19,21 @@
 | ฐานข้อมูล | Supabase Cloud (Singapore) |
 | LINE OA | ReadUP · LIFF `2011334191-2F8gRIx0` |
 
-**การ push ขึ้น GitHub ไม่ทำให้เว็บจริงเปลี่ยน** — Cloudflare ไม่ได้ต่อ auto-deploy ไว้
-ต้องสั่ง deploy เสมอ วิธีที่ง่ายที่สุดคือดับเบิลคลิก `deploy-check-and-push.cmd`
-ซึ่งตรวจ type → build → push → deploy ให้ครบในครั้งเดียว
+**วิธี deploy** — ดับเบิลคลิก `deploy-check-and-push.cmd` (ตรวจ type → build → push)
+แล้ว **Cloudflare Workers Builds** จะ build และขึ้นเว็บให้เองภายใน 2-3 นาที
+ดูสถานะที่ Workers → libraryforu → Deployments → View build history
 
-หรือสั่งเองที่โฟลเดอร์ `book-shop`
+> ⚠️ **deploy จากเครื่องนี้โดยตรงไม่ได้** — นโยบาย Device Guard/WDAC บล็อก `workerd.exe`
+> ซึ่ง `opennextjs-cloudflare deploy` ต้องใช้ แปลว่า `npm run cf:deploy`
+> และ `npm run cf:preview` จะพังด้วย `spawn UNKNOWN` เสมอบนเครื่องนี้
+> รายละเอียดและวิธีตั้งค่าอยู่ใน [`ตั้งค่า-Workers-Builds.md`](./ตั้งค่า-Workers-Builds.md)
+
+คำสั่งที่ยังใช้ได้บนเครื่องนี้ (ไม่ต้องใช้ workerd)
 
 ```bash
-npm run cf:preview   # รันในเครื่องด้วย runtime จริงของ Cloudflare
-npm run cf:deploy    # build แล้วขึ้นเว็บจริง
+npm run dev          # รันปกติสำหรับพัฒนา
+npm run typecheck
+npm run build
 npx wrangler tail    # ดู log สดจากเว็บจริง
 ```
 
