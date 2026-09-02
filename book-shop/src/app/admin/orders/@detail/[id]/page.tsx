@@ -2,7 +2,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission, getCurrentUser, can } from '@/lib/auth/permissions'
-import { OrderActions } from './OrderActions'
+import { ManualPaidAction } from './actions/ManualPaidAction'
+import { VerifySlip } from './actions/VerifySlip'
+import { VerifyActions } from './actions/VerifyActions'
+import { ShipAction } from './actions/ShipAction'
+import { CancelAction } from './actions/CancelAction'
 import { formatBaht, formatDateTime, formatDate } from '@/lib/money'
 import { payableAmount } from '@/lib/payment/promptpay'
 import {
@@ -71,6 +75,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
   )
   const canConfirmManually =
     !hasPendingSlip && !stagePaid && (isBalanceStage || status === 'pending_payment')
+  const canShip = status === 'paid' || status === 'packing'
+  const canCancel = status === 'pending_payment' || status === 'preorder_waiting'
+  const hasActions = canConfirmManually || canShip || canCancel
 
   return (
     <div className="space-y-5">
@@ -88,7 +95,8 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+        {/* ซ้าย — เนื้อหาที่ไล่อ่าน ไม่ต้องหยิบข้อมูลจากตรงนี้บ่อยระหว่างทำงาน */}
         <div className="space-y-4 lg:col-span-2">
           <section className="card p-0">
             <h2 className="border-b border-neutral-100 px-5 py-3 font-medium">รายการสินค้า</h2>
@@ -124,58 +132,24 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             </table>
           </section>
 
-          <section className="card space-y-3">
-            <h2 className="font-medium">การชำระเงิน</h2>
-            {payments.length === 0 && (
-              <p className="text-sm text-neutral-500">ลูกค้ายังไม่ได้ส่งสลิป</p>
+          <section className="card text-sm">
+            <h2 className="mb-1 font-medium">ที่อยู่จัดส่ง</h2>
+            <p className="text-neutral-700">
+              {customer?.display_name ?? 'ไม่ระบุ'}
+              <br />
+              {addr.recipient_name} · {addr.phone}
+              <br />
+              {addr.line1} {addr.subdistrict} {addr.district}
+              <br />
+              {addr.province} {addr.postcode}
+              {addr.carrier && <><br />ขนส่งที่ลูกค้าเลือก: {addr.carrier}</>}
+            </p>
+            {order.customer_note && (
+              <p className="mt-2 rounded bg-neutral-50 p-2 text-xs text-neutral-600">
+                หมายเหตุ: {order.customer_note as string}
+              </p>
             )}
-
-            {/* ทางออกสำหรับออเดอร์ที่ลูกค้าโอนแล้วแต่ไม่ได้อัปโหลดสลิป
-                ถ้าไม่มีปุ่มนี้ ออเดอร์จะค้างสถานะรอชำระเงินไปตลอด */}
-            {canConfirmManually && (
-              <OrderActions
-                mode="manual-paid"
-                orderId={order.id as string}
-                amountLabel={formatBaht(dueNow)}
-              />
-            )}
-            {payments.map((p) => (
-              <div key={p.id} className="rounded-lg border border-neutral-200 p-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span>{formatDateTime(p.created_at)}</span>
-                  <span className="badge bg-neutral-100 text-neutral-700">
-                    {PAYMENT_STATUS_LABEL[p.verify_status] ?? p.verify_status}
-                  </span>
-                </div>
-                <div className="mt-1 text-neutral-600">
-                  {PAYMENT_PURPOSE_LABEL[p.purpose] ?? p.purpose} {formatBaht(Number(p.amount))}
-                  {/* ยอดลงท้ายด้วยสตางค์ไม่ซ้ำใช้จับคู่สลิปกับออเดอร์เท่านั้น
-                      รายการที่แอดมินกดรับเองไม่มีสลิปให้จับคู่ จึงไม่ต้องแสดงให้สับสน */}
-                  {p.slip_url && (
-                    <> · ยอดที่ลูกค้าควรโอน{' '}
-                      <strong>
-                        {formatBaht(payableAmount(Number(order.total), order.order_no as string))}
-                      </strong>
-                    </>
-                  )}
-                </div>
-                <OrderActions
-                  mode="verify"
-                  orderId={order.id as string}
-                  paymentId={p.id}
-                  slipPath={p.slip_url}
-                  disabled={p.verify_status !== 'pending'}
-                />
-              </div>
-            ))}
           </section>
-
-          {(order.status === 'paid' || order.status === 'packing') && (
-            <section className="card">
-              <h2 className="mb-3 font-medium">บันทึกการจัดส่ง</h2>
-              <OrderActions mode="ship" orderId={order.id as string} />
-            </section>
-          )}
 
           {shipment?.tracking_no && (
             <section className="card text-sm">
@@ -188,9 +162,18 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               </p>
             </section>
           )}
+
+          {receipt && (
+            <section className="card text-sm">
+              <h2 className="mb-1 font-medium">ใบเสร็จรับเงิน</h2>
+              <p className="font-mono">{receipt.receipt_no}</p>
+              <p className="text-neutral-500">{formatDateTime(receipt.issued_at)}</p>
+            </section>
+          )}
         </div>
 
-        <div className="space-y-4">
+        {/* ขวา — ค้างไว้ตอนเลื่อน (sticky) เพราะเป็นสิ่งที่ต้องใช้ตลอดตอนทำงานกับออเดอร์นี้ */}
+        <div className="space-y-4 lg:sticky lg:top-6">
           <section className="card space-y-1.5 text-sm">
             <h2 className="font-medium">สรุปยอด</h2>
             <Row label="ค่าสินค้า" value={formatBaht(Number(order.subtotal))} />
@@ -217,38 +200,51 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             )}
           </section>
 
-          <section className="card text-sm">
-            <h2 className="mb-1 font-medium">ลูกค้าและที่อยู่</h2>
-            <p className="text-neutral-700">
-              {customer?.display_name ?? 'ไม่ระบุ'}
-              <br />
-              {addr.recipient_name} · {addr.phone}
-              <br />
-              {addr.line1} {addr.subdistrict} {addr.district}
-              <br />
-              {addr.province} {addr.postcode}
-              {addr.carrier && <><br />ขนส่งที่ลูกค้าเลือก: {addr.carrier}</>}
-            </p>
-            {order.customer_note && (
-              <p className="mt-2 rounded bg-neutral-50 p-2 text-xs text-neutral-600">
-                หมายเหตุ: {order.customer_note as string}
-              </p>
+          {hasActions && (
+            <section className="card space-y-3">
+              <h2 className="font-medium">ปุ่มดำเนินการ</h2>
+              {canConfirmManually && (
+                <ManualPaidAction orderId={order.id as string} amountLabel={formatBaht(dueNow)} />
+              )}
+              {canShip && <ShipAction orderId={order.id as string} />}
+              {canCancel && <CancelAction orderId={order.id as string} />}
+            </section>
+          )}
+
+          <section className="card space-y-3">
+            <h2 className="font-medium">สลิป</h2>
+            {payments.length === 0 && (
+              <p className="text-sm text-neutral-500">ลูกค้ายังไม่ได้ส่งสลิป</p>
             )}
+            {payments.map((p) => (
+              <div key={p.id} className="rounded-lg border border-neutral-200 p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span>{formatDateTime(p.created_at)}</span>
+                  <span className="badge bg-neutral-100 text-neutral-700">
+                    {PAYMENT_STATUS_LABEL[p.verify_status] ?? p.verify_status}
+                  </span>
+                </div>
+                <div className="mt-1 text-neutral-600">
+                  {PAYMENT_PURPOSE_LABEL[p.purpose] ?? p.purpose} {formatBaht(Number(p.amount))}
+                  {/* ยอดลงท้ายด้วยสตางค์ไม่ซ้ำใช้จับคู่สลิปกับออเดอร์เท่านั้น
+                      รายการที่แอดมินกดรับเองไม่มีสลิปให้จับคู่ จึงไม่ต้องแสดงให้สับสน */}
+                  {p.slip_url && (
+                    <> · ยอดที่ลูกค้าควรโอน{' '}
+                      <strong>
+                        {formatBaht(payableAmount(Number(order.total), order.order_no as string))}
+                      </strong>
+                    </>
+                  )}
+                </div>
+                <div className="mt-2 space-y-2">
+                  <VerifySlip slipPath={p.slip_url} />
+                  {p.verify_status === 'pending' && (
+                    <VerifyActions orderId={order.id as string} paymentId={p.id} />
+                  )}
+                </div>
+              </div>
+            ))}
           </section>
-
-          {receipt && (
-            <section className="card text-sm">
-              <h2 className="mb-1 font-medium">ใบเสร็จรับเงิน</h2>
-              <p className="font-mono">{receipt.receipt_no}</p>
-              <p className="text-neutral-500">{formatDateTime(receipt.issued_at)}</p>
-            </section>
-          )}
-
-          {(order.status === 'pending_payment' || order.status === 'preorder_waiting') && (
-            <section className="card">
-              <OrderActions mode="cancel" orderId={order.id as string} />
-            </section>
-          )}
         </div>
       </div>
     </div>
