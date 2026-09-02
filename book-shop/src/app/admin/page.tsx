@@ -61,7 +61,7 @@ export default async function AdminDashboard() {
                       {t.count}
                     </span>
                   </div>
-                  <Link href={t.href} className="text-sm text-teal-700 hover:underline">
+                  <Link href={t.href} className="a-link text-sm">
                     ดู →
                   </Link>
                 </li>
@@ -89,7 +89,7 @@ export default async function AdminDashboard() {
             <section className="card">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-medium">ต้องสั่งเพิ่ม</h3>
-                <Link href="/admin/stock" className="text-sm text-teal-700">ดูสต็อกทั้งหมด</Link>
+                <Link href="/admin/stock" className="a-link text-sm">ดูสต็อกทั้งหมด</Link>
               </div>
               {reorder?.length ? (
                 <table className="w-full">

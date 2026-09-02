@@ -47,7 +47,7 @@ export async function LotsTab({ from, to }: { from: string; to: string }) {
                 <td className="td text-neutral-600">{(l.supplier as string) ?? '—'}</td>
                 <td className="td text-right">{Number(l.qty_received)}</td>
                 <td className="td text-right font-medium">{Number(l.qty_remaining)}</td>
-                <td className="td text-right font-medium text-teal-800">
+                <td className="td text-right font-medium">
                   {formatBaht(Number(l.landed_unit_cost))}
                 </td>
               </tr>

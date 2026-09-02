@@ -82,7 +82,7 @@ export function CategoryRow({
             ยกเลิก
           </button>
           {state.message && (
-            <span className={`text-xs ${state.ok ? 'text-teal-700' : 'text-red-600'}`}>
+            <span className="text-xs" style={{ color: state.ok ? 'var(--ok)' : 'var(--danger)' }}>
               {state.message}
             </span>
           )}

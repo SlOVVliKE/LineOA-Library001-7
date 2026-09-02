@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { NewCategoryForm } from './NewCategoryForm'
 import { CategoryRow } from './CategoryRow'
+import { EmptyState } from '@/components/admin/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,9 +40,7 @@ export default async function CategoriesPage() {
       <NewCategoryForm nextSortOrder={nextSortOrder} />
 
       {rows.length === 0 ? (
-        <p className="card text-center text-sm text-neutral-500">
-          ยังไม่มีหมวดหมู่ — เพิ่มหมวดแรกด้านบนได้เลย
-        </p>
+        <EmptyState>ยังไม่มีหมวดหมู่ — เพิ่มหมวดแรกด้านบนได้เลย</EmptyState>
       ) : (
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">

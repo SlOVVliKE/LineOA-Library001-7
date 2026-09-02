@@ -1,6 +1,8 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { formatDateTime } from '@/lib/money'
+import { Table, TableHead, TableRow, EmptyRow } from '@/components/admin/Table'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +17,10 @@ const TYPE_LABEL: Record<string, string> = {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  queued:  'bg-amber-50 text-amber-700',
-  sent:    'bg-teal-50 text-teal-700',
-  failed:  'bg-red-50 text-red-700',
-  skipped: 'bg-neutral-100 text-neutral-500',
+  queued:  'badge-warn',
+  sent:    'badge-ok',
+  failed:  'badge-danger',
+  skipped: 'badge-quiet',
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -28,21 +30,35 @@ const STATUS_LABEL: Record<string, string> = {
   skipped: 'ข้าม',
 }
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
   await requirePermission('order.read')
+  const { status } = await searchParams
   const supabase = await createClient()
 
-  const { data: rows } = await supabase
+  // นับจากทั้งหมดเสมอ (ไม่กรอง) การ์ดสรุปด้านบนจะได้ไม่เปลี่ยนเลขตามตัวกรองที่เลือก
+  const { data: allRows } = await supabase
     .from('v_notification_log')
-    .select('*')
+    .select('status')
     .order('created_at', { ascending: false })
     .limit(100)
 
-  const counts = (rows ?? []).reduce<Record<string, number>>((acc, r) => {
+  const counts = (allRows ?? []).reduce<Record<string, number>>((acc, r) => {
     const s = r.status as string
     acc[s] = (acc[s] ?? 0) + 1
     return acc
   }, {})
+
+  let query = supabase
+    .from('v_notification_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (status) query = query.eq('status', status)
+  const { data: rows } = await query
 
   return (
     <div className="space-y-4">
@@ -55,56 +71,65 @@ export default async function NotificationsPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-5">
+        <Link
+          href="/admin/notifications"
+          className="card"
+          style={!status ? { borderColor: 'var(--info)', background: 'var(--info-bg)' } : undefined}
+        >
+          <div className="text-xs text-neutral-500">ทั้งหมด</div>
+          <div className="mt-1 text-2xl font-semibold">{allRows?.length ?? 0}</div>
+        </Link>
         {(['queued', 'sent', 'failed', 'skipped'] as const).map((s) => (
-          <div key={s} className="card">
+          <Link
+            key={s}
+            href={`/admin/notifications?status=${s}`}
+            className="card"
+            style={status === s ? { borderColor: 'var(--info)', background: 'var(--info-bg)' } : undefined}
+          >
             <div className="text-xs text-neutral-500">{STATUS_LABEL[s]}</div>
             <div className="mt-1 text-2xl font-semibold">{counts[s] ?? 0}</div>
-          </div>
+          </Link>
         ))}
       </div>
 
-      <div className="card overflow-x-auto p-0">
-        <table className="w-full">
-          <thead className="bg-neutral-50">
-            <tr>
-              <th className="th">เวลา</th>
-              <th className="th">ชนิด</th>
-              <th className="th">ออเดอร์</th>
-              <th className="th">ลูกค้า</th>
-              <th className="th">สถานะ</th>
-              <th className="th text-right">ครั้งที่ลอง</th>
-              <th className="th">สาเหตุที่พลาด</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(rows ?? []).map((r) => (
-              <tr key={r.id as string} className="border-t border-neutral-100">
-                <td className="td text-neutral-500">{formatDateTime(r.created_at as string)}</td>
-                <td className="td">{TYPE_LABEL[r.type as string] ?? (r.type as string)}</td>
-                <td className="td font-mono text-xs">{(r.order_no as string) ?? '—'}</td>
-                <td className="td text-neutral-600">{(r.customer_name as string) ?? '—'}</td>
-                <td className="td">
-                  <span className={`badge ${STATUS_STYLE[r.status as string] ?? ''}`}>
-                    {STATUS_LABEL[r.status as string] ?? (r.status as string)}
-                  </span>
-                </td>
-                <td className="td text-right text-neutral-500">{Number(r.attempts)}</td>
-                <td className="td max-w-xs truncate text-xs text-red-600" title={(r.last_error as string) ?? ''}>
-                  {(r.last_error as string) ?? ''}
-                </td>
-              </tr>
-            ))}
-            {!rows?.length && (
-              <tr>
-                <td className="td py-8 text-center text-neutral-500" colSpan={7}>
-                  ยังไม่มีการแจ้งเตือน — จะขึ้นเมื่อมีออเดอร์เปลี่ยนสถานะ
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHead>
+          <th className="th">เวลา</th>
+          <th className="th">ชนิด</th>
+          <th className="th">ออเดอร์</th>
+          <th className="th">ลูกค้า</th>
+          <th className="th">สถานะ</th>
+          <th className="th text-right">ครั้งที่ลอง</th>
+          <th className="th">สาเหตุที่พลาด</th>
+        </TableHead>
+        <tbody>
+          {(rows ?? []).map((r) => (
+            <TableRow key={r.id as string}>
+              <td className="td text-neutral-500">{formatDateTime(r.created_at as string)}</td>
+              <td className="td">{TYPE_LABEL[r.type as string] ?? (r.type as string)}</td>
+              <td className="td font-mono text-xs">{(r.order_no as string) ?? '—'}</td>
+              <td className="td text-neutral-600">{(r.customer_name as string) ?? '—'}</td>
+              <td className="td">
+                <span className={`badge ${STATUS_STYLE[r.status as string] ?? ''}`}>
+                  {STATUS_LABEL[r.status as string] ?? (r.status as string)}
+                </span>
+              </td>
+              <td className="td text-right text-neutral-500">{Number(r.attempts)}</td>
+              <td className="td max-w-xs truncate text-xs text-red-600" title={(r.last_error as string) ?? ''}>
+                {(r.last_error as string) ?? ''}
+              </td>
+            </TableRow>
+          ))}
+          {!rows?.length && (
+            <EmptyRow colSpan={7}>
+              {status
+                ? `ไม่มีการแจ้งเตือนสถานะ "${STATUS_LABEL[status] ?? status}"`
+                : 'ยังไม่มีการแจ้งเตือน — จะขึ้นเมื่อมีออเดอร์เปลี่ยนสถานะ'}
+            </EmptyRow>
+          )}
+        </tbody>
+      </Table>
 
       <p className="text-xs text-neutral-500">
         สถานะ &ldquo;ข้าม&rdquo; คือลูกค้าที่ยังไม่ได้ผูกบัญชี LINE (เช่นบัญชีทดสอบที่เข้าผ่านเบราว์เซอร์)

@@ -247,10 +247,20 @@ body {
     @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs;
     line-height: var(--leading-tight);
   }
-  .badge-ok    { background: var(--ok-bg);        color: var(--ok); }
-  .badge-warn  { background: var(--warn-bg);      color: var(--warn); }
-  .badge-info  { background: var(--info-bg);      color: var(--info); }
-  .badge-quiet { background: var(--paper-sunken); color: var(--ink-muted); }
+  .badge-ok     { background: var(--ok-bg);        color: var(--ok); }
+  .badge-warn   { background: var(--warn-bg);      color: var(--warn); }
+  .badge-info   { background: var(--info-bg);      color: var(--info); }
+  .badge-danger { background: var(--danger-bg);    color: var(--danger); }
+  .badge-quiet  { background: var(--paper-sunken); color: var(--ink-muted); }
+
+  /* ลิงก์ในหลังบ้าน — ใช้โทน info (ไม่ใช่เขียว LINE เพราะสงวนไว้เฉพาะปุ่มลงมือทำ
+     ตามกติกาสีด้านบน) ที่เดียวสำหรับ Link/anchor ทุกจุดในแอดมิน */
+  .a-link {
+    color: var(--info);
+  }
+  .a-link:hover {
+    text-decoration: underline;
+  }
 
   /* แถบปุ่มติดขอบล่างจอ ใช้กับหน้ารายละเอียดและตะกร้า
      env(safe-area-inset-bottom) เผื่อแถบ home indicator ของ iPhone

@@ -63,9 +63,10 @@ export async function OrderListPane({
             href={`/admin/orders${selectedId ? `/${selectedId}` : ''}?status=${t.key}`}
             className={`badge border ${
               (status ?? 'all') === t.key
-                ? 'border-teal-600 bg-teal-50 text-teal-800'
+                ? 'badge-info'
                 : 'border-neutral-300 text-neutral-600'
             }`}
+            style={(status ?? 'all') === t.key ? { borderColor: 'var(--info)' } : undefined}
           >
             {t.label}
           </Link>
@@ -82,11 +83,12 @@ export async function OrderListPane({
               key={o.id as string}
               href={`/admin/orders/${o.id}${qs}`}
               className={`block px-3 py-2.5 text-sm transition ${
-                active ? 'bg-teal-50' : 'hover:bg-neutral-50'
+                active ? '' : 'hover:bg-neutral-50'
               }`}
+              style={active ? { background: 'var(--info-bg)' } : undefined}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs text-teal-700">{o.order_no as string}</span>
+                <span className="a-link font-mono text-xs">{o.order_no as string}</span>
                 <span className="font-medium">{formatBaht(Number(o.total))}</span>
               </div>
               <div className="mt-1 flex items-center justify-between">

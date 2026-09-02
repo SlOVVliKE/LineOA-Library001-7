@@ -62,7 +62,7 @@ export async function MovementTab({ from, to, showCost }: { from: string; to: st
                   <td className="td text-right text-sky-700">
                     {d.received > 0 ? `+${formatNumber(d.received)}` : '—'}
                   </td>
-                  <td className="td text-right font-medium text-teal-800">
+                  <td className="td text-right font-medium">
                     {d.sold > 0 ? formatNumber(d.sold) : '—'}
                   </td>
                   <td className="td text-right text-neutral-500">

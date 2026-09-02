@@ -44,7 +44,7 @@ export async function OverviewTab({ showCost }: { showCost: boolean }) {
               <tr key={r.book_id as string} className="border-t border-neutral-100 hover:bg-neutral-50">
                 <td className="td font-mono text-xs">{r.sku}</td>
                 <td className="td">
-                  <Link href={`/admin/books/${r.book_id}`} className="text-teal-700 hover:underline">
+                  <Link href={`/admin/books/${r.book_id}`} className="a-link">
                     {r.title}
                   </Link>
                 </td>

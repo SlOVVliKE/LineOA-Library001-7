@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth/permissions'
 import { FulfillButton } from './FulfillButton'
 import { formatDate, formatDateTime, formatNumber } from '@/lib/money'
 import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE } from '@/lib/orderStatus'
+import { Table, TableHead, TableRow, EmptyRow } from '@/components/admin/Table'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,30 +40,28 @@ export default async function PreordersPage() {
         <Stat label="รอชำระส่วนที่เหลือ" value={formatNumber(awaiting?.length ?? 0) + ' ออเดอร์'} />
       </div>
 
-      <section className="card overflow-x-auto p-0">
+      <section className="a-card overflow-x-auto p-0">
         <h2 className="border-b border-neutral-100 px-5 py-3 font-medium">ยอดจองสะสมรายเล่ม</h2>
-        <table className="w-full">
-          <thead className="bg-neutral-50">
-            <tr>
-              <th className="th">SKU</th>
-              <th className="th">ชื่อหนังสือ</th>
-              <th className="th">คาดว่าของเข้า</th>
-              <th className="th text-right">รออยู่</th>
-              <th className="th text-right">ออเดอร์</th>
-              <th className="th text-right">มีของแล้ว</th>
-              <th className="th"></th>
-            </tr>
-          </thead>
+        <table className="a-table">
+          <TableHead>
+            <th className="th">SKU</th>
+            <th className="th">ชื่อหนังสือ</th>
+            <th className="th">คาดว่าของเข้า</th>
+            <th className="th text-right">รออยู่</th>
+            <th className="th text-right">ออเดอร์</th>
+            <th className="th text-right">มีของแล้ว</th>
+            <th className="th"></th>
+          </TableHead>
           <tbody>
             {(demand ?? []).map((d) => {
               const waiting = Number(d.qty_waiting)
               const onHand = Number(d.qty_on_hand)
               const canFulfill = onHand > 0
               return (
-                <tr key={d.book_id as string} className="border-t border-neutral-100">
+                <TableRow key={d.book_id as string}>
                   <td className="td font-mono text-xs">{d.sku}</td>
                   <td className="td">
-                    <Link href={`/admin/books/${d.book_id}`} className="text-teal-700 hover:underline">
+                    <Link href={`/admin/books/${d.book_id}`} className="a-link">
                       {d.title}
                     </Link>
                   </td>
@@ -71,51 +70,43 @@ export default async function PreordersPage() {
                     {formatNumber(waiting)}
                   </td>
                   <td className="td text-right text-neutral-500">{formatNumber(Number(d.order_count))}</td>
-                  <td className={`td text-right ${canFulfill ? 'font-medium text-teal-800' : 'text-neutral-400'}`}>
+                  <td className={`td text-right ${canFulfill ? 'font-medium' : 'text-neutral-400'}`}>
                     {formatNumber(onHand)}
                   </td>
                   <td className="td">
                     {canFulfill && <FulfillButton bookId={d.book_id as string} />}
                   </td>
-                </tr>
+                </TableRow>
               )
             })}
-            {!demand?.length && (
-              <tr>
-                <td className="td py-8 text-center text-neutral-500" colSpan={7}>
-                  ยังไม่มีใครสั่งจอง
-                </td>
-              </tr>
-            )}
+            {!demand?.length && <EmptyRow colSpan={7}>ยังไม่มีใครสั่งจอง</EmptyRow>}
           </tbody>
         </table>
       </section>
 
       {!!queue?.length && (
-        <section className="card overflow-x-auto p-0">
+        <section className="a-card overflow-x-auto p-0">
           <h2 className="border-b border-neutral-100 px-5 py-3 font-medium">
             คิวรายคน — ใครจองก่อนได้ก่อน
           </h2>
-          <table className="w-full">
-            <thead className="bg-neutral-50">
-              <tr>
-                <th className="th text-right">คิวที่</th>
-                <th className="th">หนังสือ</th>
-                <th className="th">ออเดอร์</th>
-                <th className="th">ลูกค้า</th>
-                <th className="th">จองเมื่อ</th>
-                <th className="th text-right">จอง</th>
-                <th className="th text-right">ได้แล้ว</th>
-                <th className="th">สถานะออเดอร์</th>
-              </tr>
-            </thead>
+          <table className="a-table">
+            <TableHead>
+              <th className="th text-right">คิวที่</th>
+              <th className="th">หนังสือ</th>
+              <th className="th">ออเดอร์</th>
+              <th className="th">ลูกค้า</th>
+              <th className="th">จองเมื่อ</th>
+              <th className="th text-right">จอง</th>
+              <th className="th text-right">ได้แล้ว</th>
+              <th className="th">สถานะออเดอร์</th>
+            </TableHead>
             <tbody>
               {queue.map((q) => (
-                <tr key={q.id as string} className="border-t border-neutral-100">
+                <TableRow key={q.id as string}>
                   <td className="td text-right font-medium">{Number(q.queue_position)}</td>
                   <td className="td">{q.title}</td>
                   <td className="td">
-                    <Link href={`/admin/orders/${q.order_id}`} className="font-mono text-xs text-teal-700 hover:underline">
+                    <Link href={`/admin/orders/${q.order_id}`} className="a-link font-mono text-xs">
                       {q.order_no}
                     </Link>
                   </td>
@@ -128,7 +119,7 @@ export default async function PreordersPage() {
                       {ORDER_STATUS_LABEL[q.order_status as string]}
                     </span>
                   </td>
-                </tr>
+                </TableRow>
               ))}
             </tbody>
           </table>
@@ -140,24 +131,22 @@ export default async function PreordersPage() {
       )}
 
       {!!awaiting?.length && (
-        <section className="card overflow-x-auto p-0">
+        <section className="a-card overflow-x-auto p-0">
           <h2 className="border-b border-neutral-100 px-5 py-3 font-medium">
             ของเข้าแล้ว รอลูกค้าชำระส่วนที่เหลือ
           </h2>
-          <table className="w-full">
-            <thead className="bg-neutral-50">
-              <tr>
-                <th className="th">ออเดอร์</th>
-                <th className="th text-right">ยอดรวม</th>
-                <th className="th text-right">มัดจำที่จ่ายแล้ว</th>
-                <th className="th text-right">คงเหลือ</th>
-              </tr>
-            </thead>
+          <table className="a-table">
+            <TableHead>
+              <th className="th">ออเดอร์</th>
+              <th className="th text-right">ยอดรวม</th>
+              <th className="th text-right">มัดจำที่จ่ายแล้ว</th>
+              <th className="th text-right">คงเหลือ</th>
+            </TableHead>
             <tbody>
               {awaiting.map((o) => (
-                <tr key={o.id as string} className="border-t border-neutral-100">
+                <TableRow key={o.id as string}>
                   <td className="td">
-                    <Link href={`/admin/orders/${o.id}`} className="font-mono text-xs text-teal-700 hover:underline">
+                    <Link href={`/admin/orders/${o.id}`} className="a-link font-mono text-xs">
                       {o.order_no}
                     </Link>
                   </td>
@@ -168,7 +157,7 @@ export default async function PreordersPage() {
                   <td className="td text-right font-medium text-amber-700">
                     {o.balance_due != null ? Number(o.balance_due).toFixed(2) : '—'}
                   </td>
-                </tr>
+                </TableRow>
               ))}
             </tbody>
           </table>

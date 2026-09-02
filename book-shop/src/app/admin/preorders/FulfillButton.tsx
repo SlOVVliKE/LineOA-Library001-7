@@ -25,7 +25,7 @@ export function FulfillButton({ bookId }: { bookId: string }) {
         {pending ? 'กำลังจ่าย...' : 'จ่ายของตามคิว'}
       </button>
       {msg?.message && (
-        <p className={`text-xs ${msg.ok ? 'text-teal-700' : 'text-red-600'}`}>{msg.message}</p>
+        <p className="text-xs" style={{ color: msg.ok ? 'var(--ok)' : 'var(--danger)' }}>{msg.message}</p>
       )}
     </div>
   )

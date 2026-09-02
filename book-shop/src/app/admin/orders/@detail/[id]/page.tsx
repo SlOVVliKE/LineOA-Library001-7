@@ -81,7 +81,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-5">
-      <Link href="/admin/orders" className="text-sm text-teal-700">← คำสั่งซื้อทั้งหมด</Link>
+      <Link href="/admin/orders" className="a-link text-sm">← คำสั่งซื้อทั้งหมด</Link>
 
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="font-mono text-xl font-semibold">{order.order_no as string}</h1>

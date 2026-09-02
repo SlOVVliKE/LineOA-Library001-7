@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { NotifyButton } from './NotifyButton'
+import { EmptyState } from '@/components/admin/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,9 +29,7 @@ export default async function FavouritesDemandPage() {
       </div>
 
       {list.length === 0 ? (
-        <p className="card text-center text-sm text-neutral-500">
-          ยังไม่มีลูกค้าติดดาวหนังสือเล่มไหน
-        </p>
+        <EmptyState>ยังไม่มีลูกค้าติดดาวหนังสือเล่มไหน</EmptyState>
       ) : (
         <>
           <div className="card overflow-hidden p-0">
@@ -53,7 +52,7 @@ export default async function FavouritesDemandPage() {
                       <td className="px-3 py-2">
                         <Link
                           href={`/admin/books/${r.book_id}`}
-                          className="font-medium text-teal-800 hover:underline"
+                          className="a-link font-medium"
                         >
                           {r.title as string}
                         </Link>
@@ -72,7 +71,7 @@ export default async function FavouritesDemandPage() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         {available > 0 ? (
-                          <span className="text-teal-700">{available}</span>
+                          <span style={{ color: 'var(--ok)' }}>{available}</span>
                         ) : (
                           <span className="text-neutral-400">0</span>
                         )}

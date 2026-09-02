@@ -15,7 +15,8 @@ export function ExportButtons({ from, to }: { from: string; to: string }) {
           key={k.kind}
           href={`/admin/reports/export?kind=${k.kind}&from=${from}&to=${to}`}
           title={k.hint}
-          className="badge border border-teal-600 bg-teal-50 px-2.5 py-1 text-teal-800 hover:bg-teal-100"
+          className="badge badge-info border px-2.5 py-1"
+          style={{ borderColor: 'var(--info)' }}
         >
           {k.label}
         </a>

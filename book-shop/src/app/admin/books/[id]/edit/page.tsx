@@ -29,7 +29,7 @@ export default async function EditBookPage({
 
   return (
     <div className="space-y-4">
-      <Link href={`/admin/books/${id}`} className="text-sm text-teal-700">
+      <Link href={`/admin/books/${id}`} className="a-link text-sm">
         ← กลับไปหน้าหนังสือ
       </Link>
       <h1 className="text-xl font-semibold">แก้ไข {book.title as string}</h1>

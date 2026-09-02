@@ -105,7 +105,7 @@ export default async function BookDetailPage({
                   <td className="td text-right font-medium">{Number(l.qty_remaining)}</td>
                   <td className="td text-right">{formatBaht(Number(l.unit_cost))}</td>
                   <td className="td text-right">{formatBaht(Number(l.shipping_cost))}</td>
-                  <td className="td text-right font-medium text-teal-800">
+                  <td className="td text-right font-medium">
                     {formatBaht(Number(l.landed_unit_cost))}
                   </td>
                 </tr>
@@ -143,8 +143,8 @@ export default async function BookDetailPage({
               <tr key={m.id as string} className="border-t border-neutral-100">
                 <td className="td text-neutral-500">{formatDateTime(m.created_at as string)}</td>
                 <td className="td">{movementLabel(m.type as string)}</td>
-                <td className={`td text-right font-medium ${
-                  Number(m.qty) > 0 ? 'text-teal-700' : 'text-red-600'}`}>
+                <td className="td text-right font-medium"
+                  style={{ color: Number(m.qty) > 0 ? 'var(--ok)' : 'var(--danger)' }}>
                   {Number(m.qty) > 0 ? '+' : ''}{Number(m.qty)}
                 </td>
                 {showCost && (

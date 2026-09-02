@@ -41,7 +41,7 @@ export function NewCategoryForm({ nextSortOrder }: { nextSortOrder: number }) {
         </button>
       </div>
       {state.message && (
-        <p className={`text-sm ${state.ok ? 'text-teal-700' : 'text-red-600'}`}>{state.message}</p>
+        <p className="text-sm" style={{ color: state.ok ? 'var(--ok)' : 'var(--danger)' }}>{state.message}</p>
       )}
       <p className="text-xs text-neutral-500">
         ลำดับใช้เรียงปุ่มหมวดที่หน้าร้าน เลขน้อยมาก่อน

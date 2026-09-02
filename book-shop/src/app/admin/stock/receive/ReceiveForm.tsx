@@ -73,10 +73,10 @@ export function ReceiveForm({ books }: { books: BookOption[] }) {
       </div>
 
       {landed !== null && landed > 0 && (
-        <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
-          <div className="text-xs text-teal-800">ต้นทุนจริงต่อเล่มที่จะบันทึก</div>
-          <div className="text-xl font-semibold text-teal-900">{formatBaht(landed)}</div>
-          <div className="mt-1 text-xs text-teal-700">
+        <div className="rounded-lg border px-4 py-3" style={{ borderColor: 'var(--info)', background: 'var(--info-bg)' }}>
+          <div className="text-xs" style={{ color: 'var(--info)' }}>ต้นทุนจริงต่อเล่มที่จะบันทึก</div>
+          <div className="text-xl font-semibold" style={{ color: 'var(--info)' }}>{formatBaht(landed)}</div>
+          <div className="mt-1 text-xs" style={{ color: 'var(--info)' }}>
             = {formatBaht(unitCost)} + ({formatBaht(shippingCost)} ÷ {qty} เล่ม)
             — ตัวเลขนี้คือต้นทุนที่ใช้คำนวณกำไรตอนขาย
           </div>
