@@ -1,54 +1,61 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser, can } from '@/lib/auth/permissions'
-import { SignOutButton } from '@/components/SignOutButton'
+import { getAdminWorkQueue } from '@/lib/admin/workQueue'
+import { Sidebar, type NavGroup } from '@/components/admin/Sidebar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
+  const queue = await getAdminWorkQueue()
 
-  const nav = [
-    { href: '/admin',              label: 'ภาพรวม',        show: true },
-    { href: '/admin/orders',       label: 'คำสั่งซื้อ',     show: can(user, 'order.read') },
-    { href: '/admin/preorders',    label: 'สั่งจอง',       show: can(user, 'order.read') },
-    { href: '/admin/books',        label: 'หนังสือ',       show: can(user, 'book.write') },
-    { href: '/admin/categories',   label: 'หมวดหมู่',      show: can(user, 'book.write') },
-    { href: '/admin/favourites',   label: 'ลูกค้าสนใจ',    show: can(user, 'book.write') },
-    { href: '/admin/stock',        label: 'สต็อกและต้นทุน', show: can(user, 'lot.write') || can(user, 'cost.read') },
-    { href: '/admin/stock/receive',label: 'รับสินค้าเข้า',  show: can(user, 'lot.write') },
-    { href: '/admin/stock/adjust', label: 'ปรับสต็อก',     show: can(user, 'lot.write') },
-    { href: '/admin/reports',      label: 'รายงานกำไร',    show: can(user, 'cost.read') },
-    { href: '/admin/notifications', label: 'แจ้งเตือน',    show: can(user, 'order.read') },
-  ].filter((n) => n.show)
+  // ตัวเลขข้าง "คำสั่งซื้อ" รวมงานค้างทุกแบบที่เกี่ยวกับออเดอร์ (รอส่ง/รอชำระ
+  // ส่วนที่เหลือ/รอตรวจสลิป) เพราะหน้าแรก "งานวันนี้" แยกให้เห็นทีละแถวอยู่แล้ว
+  // เมนูข้างจึงพอเป็นผลรวมเดียวให้รู้ว่า "มีอะไรค้างในหมวดนี้บ้าง"
+  const ordersBadge = queue.slipsPending + queue.ordersToShip + queue.ordersAwaitingBalance
+
+  const groups: NavGroup[] = [
+    { items: [{ href: '/admin', label: 'งานวันนี้' }] },
+    {
+      title: 'ขาย',
+      items: [
+        can(user, 'order.read') && { href: '/admin/orders', label: 'คำสั่งซื้อ', count: ordersBadge },
+        can(user, 'order.read') && { href: '/admin/preorders', label: 'สั่งจอง', count: queue.preordersWaiting },
+      ].filter(Boolean) as NavGroup['items'],
+    },
+    {
+      title: 'สินค้า',
+      items: [
+        can(user, 'book.write') && { href: '/admin/books', label: 'หนังสือ' },
+        can(user, 'book.write') && { href: '/admin/categories', label: 'หมวดหมู่' },
+        can(user, 'book.write') && { href: '/admin/favourites', label: 'ลูกค้าสนใจ' },
+      ].filter(Boolean) as NavGroup['items'],
+    },
+    {
+      title: 'คลัง',
+      items: [
+        (can(user, 'lot.write') || can(user, 'cost.read')) &&
+          { href: '/admin/stock', label: 'สต็อกและต้นทุน' },
+      ].filter(Boolean) as NavGroup['items'],
+    },
+    {
+      title: 'รายงาน',
+      items: [
+        can(user, 'cost.read') && { href: '/admin/reports', label: 'กำไร' },
+      ].filter(Boolean) as NavGroup['items'],
+    },
+    {
+      title: 'ระบบ',
+      items: [
+        can(user, 'order.read') &&
+          { href: '/admin/notifications', label: 'แจ้งเตือน', count: queue.notificationsFailed },
+      ].filter(Boolean) as NavGroup['items'],
+    },
+  ].filter((g) => g.items.length > 0)
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
-            <span className="font-semibold">ระบบร้านหนังสือ</span>
-            <nav className="flex gap-1">
-              {nav.map((n) => (
-                <Link key={n.href} href={n.href}
-                  className="rounded-lg px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100">
-                  {n.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right text-xs text-neutral-500">
-              <div className="font-medium text-neutral-700">
-                {user.displayName ?? user.email}
-              </div>
-              <div>{user.roles.join(', ')}</div>
-            </div>
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+    <div className="min-h-screen lg:flex">
+      <Sidebar groups={groups} user={{ name: user.displayName ?? user.email ?? '', roles: user.roles }} />
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">{children}</main>
     </div>
   )
 }

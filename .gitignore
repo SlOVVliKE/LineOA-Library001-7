@@ -3,8 +3,14 @@
 .env.local
 .env*.local
 *.env.local
+.dev.vars
+book-shop/.dev.vars
 book-shop/supabase/.temp/
 supabase/.temp/
+
+# โฟลเดอร์เก็บคีย์/รหัสผ่านของบริการภายนอก (ShipPop ฯลฯ)
+# เคยมีไฟล์ ShipPop หลุดขึ้น git มาแล้ว จึงกันทั้งโฟลเดอร์
+ความลับ-ห้ามขึ้น-git/
 
 # ---------- ของที่สร้างใหม่ได้ ----------
 node_modules/

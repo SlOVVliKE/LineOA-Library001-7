@@ -10,10 +10,18 @@ export const dynamic = 'force-dynamic'
 const TABS = [
   { key: 'all',              label: 'ทั้งหมด' },
   { key: 'pending_payment',  label: 'รอชำระเงิน' },
-  { key: 'paid',             label: 'ชำระแล้ว รอส่ง' },
+  { key: 'to_ship',          label: 'ชำระแล้ว รอส่ง' },
   { key: 'preorder_waiting', label: 'รอของเข้า' },
+  { key: 'awaiting_balance', label: 'รอชำระส่วนที่เหลือ' },
   { key: 'shipped',          label: 'จัดส่งแล้ว' },
 ]
+
+// 'to_ship' ไม่ใช่ค่า status จริงในฐานข้อมูล — เป็นตัวกรองรวมสองสถานะที่หน้า
+// orders/[id] ก็ปฏิบัติเหมือนเป็นกลุ่มเดียวกันอยู่แล้ว (ดูปุ่ม "จัดส่ง" ที่โชว์ทั้ง
+// paid และ packing) เพื่อให้ลิงก์จากหน้า "งานวันนี้" กรองมาถูกกลุ่มเดียวกัน
+const STATUS_FILTERS: Record<string, string[]> = {
+  to_ship: ['paid', 'packing'],
+}
 
 export default async function AdminOrdersPage({
   searchParams,
@@ -30,7 +38,10 @@ export default async function AdminOrdersPage({
     .order('created_at', { ascending: false })
     .limit(100)
 
-  if (status && status !== 'all') query = query.eq('status', status)
+  if (status && status !== 'all') {
+    const group = STATUS_FILTERS[status]
+    query = group ? query.in('status', group) : query.eq('status', status)
+  }
 
   const { data: orders } = await query
 

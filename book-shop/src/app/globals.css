@@ -66,6 +66,12 @@
   --danger:  #962c2c;
   --danger-bg: #fbeaea;
 
+  /* โทนกลาง "กำลังดำเนินการ" — ใช้เฉพาะป้ายสถานะหลังบ้านที่ไม่ใช่ ok/warn/danger
+     เช่น ออเดอร์ที่อยู่ระหว่างทาง (รอของเข้า/กำลังแพ็ก/จัดส่งแล้ว)
+     contrast ~6.2:1 บนพื้น --info-bg ผ่านเกณฑ์ WCAG AA */
+  --info:    #1f5f7a;
+  --info-bg: #e8f1f5;
+
   /* ---------- ระยะบรรทัดสำหรับภาษาไทย ----------
      ไทยมีสระบน สระล่าง และวรรณยุกต์ซ้อนได้ถึงสามชั้น (เช่น "เมื่อ" "ที่")
      ค่า 1.5 ที่ Tailwind ให้มาเป็นค่าสำหรับภาษาอังกฤษ พอมาใช้กับไทย
@@ -243,6 +249,7 @@ body {
   }
   .badge-ok    { background: var(--ok-bg);        color: var(--ok); }
   .badge-warn  { background: var(--warn-bg);      color: var(--warn); }
+  .badge-info  { background: var(--info-bg);      color: var(--info); }
   .badge-quiet { background: var(--paper-sunken); color: var(--ink-muted); }
 
   /* แถบปุ่มติดขอบล่างจอ ใช้กับหน้ารายละเอียดและตะกร้า
@@ -254,5 +261,76 @@ body {
     border-color: var(--line);
     background: color-mix(in srgb, var(--paper-raised) 92%, transparent);
     backdrop-filter: blur(8px);
+  }
+
+  /* ============================================================
+     หลังบ้าน (admin) — แน่นกว่าหน้าร้าน
+     ============================================================
+     ใช้สีและฟอนต์ชุดเดียวกับหน้าร้านทั้งหมด (ดู :root ด้านบน) — ค่า contrast
+     ที่ตรวจไว้แล้วสำหรับ --ink / --ink-muted / --ink-faint / --on-green
+     จึงยังผ่าน WCAG AA เหมือนเดิม เพราะไม่มีสีใหม่ มีแค่ขนาด/ระยะห่างที่เปลี่ยน
+
+     เหตุผลที่แน่นกว่า: หลังบ้านดูบนคอมเป็นหลักและเป็นงานตาราง ต้องเห็นข้อมูล
+     ได้เยอะต่อหน้าจอ ต่างจากหน้าร้านที่ดูบนมือถือเป็นหลักและเน้นเป้าแตะใหญ่ */
+
+  .a-card {
+    @apply rounded-xl border p-2.5;
+    border-color: var(--line);
+    background: var(--paper-raised);
+  }
+
+  /* แถวตาราง 40px — ใช้กับ <tr> คู่กับ .th/.td เดิมของหน้าร้านที่มีสี/ขนาด
+     เหมาะอยู่แล้ว (text-xs กับ text-sm) ไม่ต้องสร้างเซลล์ตารางชุดใหม่ */
+  .a-table {
+    @apply w-full text-left;
+  }
+  .a-row {
+    height: 40px;
+    border-top: 1px solid var(--line);
+  }
+  .a-row:hover {
+    background: var(--paper-sunken);
+  }
+
+  .a-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5
+           text-[13px] transition disabled:opacity-50;
+    min-height: 36px;
+  }
+  .a-btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .a-btn-primary {
+    @apply a-btn font-bold;
+    background: var(--line-green);
+    color: var(--on-green);
+  }
+  .a-btn-primary:hover:not(:disabled) {
+    background: var(--line-green-press);
+  }
+  .a-btn-ghost {
+    @apply a-btn border bg-[color:var(--paper-raised)];
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+  .a-btn-ghost:hover:not(:disabled) {
+    background: var(--paper-sunken);
+  }
+
+  /* แท็บ (ใช้ตอนรอบ 3 หน้าคลัง) — เตรียมไว้พร้อมกับชุด token อื่นตามแผน */
+  .a-tabs {
+    @apply flex gap-1 border-b;
+    border-color: var(--line);
+  }
+  .a-tab {
+    @apply px-3 py-2 text-[13px];
+    color: var(--ink-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .a-tab-active {
+    color: var(--ink);
+    border-color: var(--line-green);
+    font-weight: 700;
   }
 }
