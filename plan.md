@@ -292,7 +292,7 @@ Next.js App Router จะ unmount/remount ทั้งต้นไม้ทุ�
 - [x] เปิดด้วยบัญชีสิทธิ์ต่ำ — `stock@bookshop.local` (มี `lot.write` ไม่มี `cost.read`) เห็นแค่ 2 แท็บ (ไม่มี "ล็อตและต้นทุน") ไม่เห็นคอลัมน์ต้นทุน/มูลค่าสต็อกในแท็บสต็อกคงเหลือ ตรงตามสิทธิ์เดิม
 - [x] ย่อจอเหลือ 375px — แผงเลื่อน "รับสินค้าเข้า"/"ปรับสต็อก" กางเต็มจอตามสเปก
 - [x] `db-push.cmd` — ไม่มี migration ใหม่ในรอบนี้ ไม่ต้องรัน
-- [ ] `deploy-check-and-push.cmd` — **ยังไม่รัน** รอคำสั่ง push จากคุณ
+- [x] `deploy-check-and-push.cmd` — commit `d1ad8ba` push ขึ้น `main` แล้ว Cloudflare Workers Builds กำลังสร้างอยู่ (ปกติ 2-3 นาที) — เช็คสถานะที่ Workers → libraryforu → Deployments
 
 ---
 
@@ -302,8 +302,8 @@ Next.js App Router จะ unmount/remount ทั้งต้นไม้ทุ�
 |---|---|---|
 | 1 — โครงหลัก + งานวันนี้ | **เสร็จ — พุชขึ้น production แล้ว** | migration 0026 อยู่บน Supabase Cloud แล้ว โค้ด push ขึ้น `main` แล้ว (commit `1313330`) รอ Cloudflare build เสร็จ (~2-3 นาทีหลัง push) |
 | 2 — คำสั่งซื้อ | **เสร็จ — พุชขึ้น production แล้ว** | ไม่มี migration ใหม่ โค้ด push ขึ้น `main` แล้ว (commit `cd35284`) รอ Cloudflare build เสร็จ |
-| 3 — คลัง | **โค้ดเสร็จแล้ว ทดสอบในเครื่องผ่านหมด รอ push** | ไม่มี migration ใหม่ (ไม่ต้องรัน `db-push.cmd`) เหลือแค่ `deploy-check-and-push.cmd` |
-| 4 — หน้าที่เหลือ | ยังไม่เริ่ม | |
+| 3 — คลัง | **เสร็จ — พุชขึ้น production แล้ว** | ไม่มี migration ใหม่ โค้ด push ขึ้น `main` แล้ว (commit `d1ad8ba`) รอ Cloudflare build เสร็จ |
+| 4 — หน้าที่เหลือ | กำลังทำ | |
 
 ---
 
