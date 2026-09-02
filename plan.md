@@ -309,7 +309,7 @@ Next.js App Router จะ unmount/remount ทั้งต้นไม้ทุ�
 - [x] ทดสอบตัวกรองสถานะแจ้งเตือนจริง — กด "ส่งไม่สำเร็จ" แล้ว URL เปลี่ยนเป็น `?status=failed` การ์ดไฮไลต์ถูกใบ ข้อความว่างเปลี่ยนตามสถานะที่กรอง
 - [x] เปิดด้วยบัญชีสิทธิ์ต่ำ — `packer@bookshop.local` เข้า `/admin/stock` (ไม่มีสิทธิ์) แล้วเด้งมาหน้า `forbidden` ที่ใช้ token ใหม่ถูกต้อง
 - [x] `db-push.cmd` — ไม่มี migration ใหม่ในรอบนี้ (งานนี้เป็น token/UI cleanup ล้วนๆ) ไม่ต้องรัน
-- [ ] `deploy-check-and-push.cmd` — **ยังไม่รัน** รอคำสั่ง push จากคุณ
+- [x] `deploy-check-and-push.cmd` — commit `1a359c5` push ขึ้น `main` แล้ว Cloudflare Workers Builds กำลังสร้างอยู่ (ปกติ 2-3 นาที) — เช็คสถานะที่ Workers → libraryforu → Deployments
 
 ---
 
@@ -320,7 +320,9 @@ Next.js App Router จะ unmount/remount ทั้งต้นไม้ทุ�
 | 1 — โครงหลัก + งานวันนี้ | **เสร็จ — พุชขึ้น production แล้ว** | migration 0026 อยู่บน Supabase Cloud แล้ว โค้ด push ขึ้น `main` แล้ว (commit `1313330`) รอ Cloudflare build เสร็จ (~2-3 นาทีหลัง push) |
 | 2 — คำสั่งซื้อ | **เสร็จ — พุชขึ้น production แล้ว** | ไม่มี migration ใหม่ โค้ด push ขึ้น `main` แล้ว (commit `cd35284`) รอ Cloudflare build เสร็จ |
 | 3 — คลัง | **เสร็จ — พุชขึ้น production แล้ว** | ไม่มี migration ใหม่ โค้ด push ขึ้น `main` แล้ว (commit `d1ad8ba`) รอ Cloudflare build เสร็จ |
-| 4 — หน้าที่เหลือ | **โค้ดเสร็จแล้ว ทดสอบในเครื่องผ่านหมด รอ push** | ไม่มี migration ใหม่ (ไม่ต้องรัน `db-push.cmd`) เหลือแค่ `deploy-check-and-push.cmd` |
+| 4 — หน้าที่เหลือ | **เสร็จ — พุชขึ้น production แล้ว** | ไม่มี migration ใหม่ โค้ด push ขึ้น `main` แล้ว (commit `1a359c5`) รอ Cloudflare build เสร็จ |
+
+**ทั้ง 4 รอบของแผนรื้อโครงสร้าง UX/UI หลังบ้านเสร็จสมบูรณ์แล้ว** (2026-09-02)
 
 ---
 
