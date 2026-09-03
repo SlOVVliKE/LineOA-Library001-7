@@ -363,6 +363,8 @@ Next.js App Router จะ unmount/remount ทั้งต้นไม้ทุ�
 `run-book-shop` driver ทุกจุด (สร้าง/ลบข้อมูลทดสอบทุกครั้ง ปิดท้ายด้วย `supabase db reset`)
 ไม่มี migration ใหม่ในรอบนี้
 
+**เสร็จ — พุชขึ้น production แล้ว** (commit `38c5492`)
+
 ---
 
 ## งานค้างอื่นที่ไม่เกี่ยวกับ UX
