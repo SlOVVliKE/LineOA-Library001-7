@@ -53,9 +53,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ].filter((g) => g.items.length > 0)
 
   return (
-    <div className="min-h-screen lg:flex">
+    <div className="min-h-screen">
       <Sidebar groups={groups} user={{ name: user.displayName ?? user.email ?? '', roles: user.roles }} />
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">{children}</main>
+      {/* padding-left มาจาก CSS variable ที่ Sidebar ตั้งเอง (0 ตอนยุบ, 220px ตอนกาง)
+          เมนูข้างเป็น lg:fixed แยกออกจาก flow ปกติแล้ว จึงต้องเว้นที่ให้ตรงนี้แทน
+          การใช้ flex sibling เดิม — สองส่วนนี้เป็นอิสระต่อกันจริงๆ ไม่ใช่ layout เดียวกัน */}
+      <main className="transition-[padding] lg:pl-[var(--admin-sidebar-w,220px)]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">{children}</div>
+      </main>
     </div>
   )
 }
