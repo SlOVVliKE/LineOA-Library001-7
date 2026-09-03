@@ -56,12 +56,15 @@ export async function OrderListPane({
     <div className="space-y-3">
       <h1 className="text-xl font-semibold">คำสั่งซื้อ</h1>
 
-      <div className="flex flex-wrap gap-1.5">
+      {/* grid 2 คอลัมน์แทน flex-wrap — 6 แท็บพอดี 3 แถวเต็มทุกแถว ไม่ให้แถวสุดท้าย
+          เหลือค้างครึ่งแถวแบบ flex-wrap เดิม (ทั้งหมด/รอชำระเงิน/ชำระแล้ว รอส่ง/รอของเข้า
+          ขึ้นแถวแรกพอดี 4 อัน แล้วเหลืออีก 2 อันตกไปแถวสองแบบเอียงข้าง) */}
+      <div className="grid grid-cols-2 gap-1.5">
         {TABS.map((t) => (
           <Link
             key={t.key}
             href={`/admin/orders${selectedId ? `/${selectedId}` : ''}?status=${t.key}`}
-            className={`badge border ${
+            className={`badge w-full justify-center border text-center ${
               (status ?? 'all') === t.key
                 ? 'badge-info'
                 : 'border-neutral-300 text-neutral-600'
