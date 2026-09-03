@@ -7,6 +7,7 @@ import { VerifySlip } from './actions/VerifySlip'
 import { VerifyActions } from './actions/VerifyActions'
 import { ShipAction } from './actions/ShipAction'
 import { CancelAction } from './actions/CancelAction'
+import { OrderDetailLayout } from './OrderDetailLayout'
 import { formatBaht, formatDateTime, formatDate } from '@/lib/money'
 import { payableAmount } from '@/lib/payment/promptpay'
 import {
@@ -95,9 +96,10 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
-        {/* ซ้าย — เนื้อหาที่ไล่อ่าน ไม่ต้องหยิบข้อมูลจากตรงนี้บ่อยระหว่างทำงาน */}
-        <div className="space-y-4 lg:col-span-2">
+      <OrderDetailLayout
+        content={
+        /* ซ้าย — เนื้อหาที่ไล่อ่าน ไม่ต้องหยิบข้อมูลจากตรงนี้บ่อยระหว่างทำงาน */
+        <div className="space-y-4">
           <section className="card p-0">
             <h2 className="border-b border-neutral-100 px-5 py-3 font-medium">รายการสินค้า</h2>
             <table className="w-full">
@@ -171,9 +173,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             </section>
           )}
         </div>
-
-        {/* ขวา — ค้างไว้ตอนเลื่อน (sticky) เพราะเป็นสิ่งที่ต้องใช้ตลอดตอนทำงานกับออเดอร์นี้ */}
-        <div className="space-y-4 lg:sticky lg:top-6">
+        }
+        sidebar={
+        <div className="space-y-4">
           <section className="card space-y-1.5 text-sm">
             <h2 className="font-medium">สรุปยอด</h2>
             <Row label="ค่าสินค้า" value={formatBaht(Number(order.subtotal))} />
@@ -246,7 +248,8 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             ))}
           </section>
         </div>
-      </div>
+        }
+      />
     </div>
   )
 }

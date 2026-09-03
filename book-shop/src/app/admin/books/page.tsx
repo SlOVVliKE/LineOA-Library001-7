@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { formatBaht, formatNumber } from '@/lib/money'
 import { Table, TableHead, TableRow, EmptyRow } from '@/components/admin/Table'
+import { BooksPanels } from './BooksPanels'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,9 +24,10 @@ export default async function BooksPage({
 
   if (q) query = query.ilike('title', `%${q}%`)
 
-  const [{ data: books }, { data: stock }] = await Promise.all([
+  const [{ data: books }, { data: stock }, { data: categories }] = await Promise.all([
     query,
     supabase.from('v_stock_summary').select('book_id, on_hand, available_to_sell'),
+    supabase.from('categories').select('id, name').order('sort_order'),
   ])
 
   const stockMap = new Map(
@@ -36,7 +38,7 @@ export default async function BooksPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">หนังสือ</h1>
-        <Link href="/admin/books/new" className="btn-primary">เพิ่มหนังสือ</Link>
+        <BooksPanels categories={(categories ?? []) as { id: string; name: string }[]} />
       </div>
 
       <form className="a-card sticky top-0 z-10 flex gap-2" style={{ background: 'var(--paper)' }}>
