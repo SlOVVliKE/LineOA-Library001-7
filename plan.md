@@ -396,6 +396,8 @@ Next.js App Router จะ unmount/remount ทั้งต้นไม้ทุ�
 **ทดสอบรวม**: `npm run typecheck` และ `npx opennextjs-cloudflare build` ผ่านทั้งคู่ ทดสอบจริงด้วย
 `run-book-shop` driver ทั้งบัญชี owner และ packer (สิทธิ์ต่ำ) ไม่มี migration ใหม่ในรอบนี้
 
+**เสร็จ — พุชขึ้น production แล้ว** (commit `d22258c`)
+
 ---
 
 ## รอบ 7 — แท็บกรองสถานะหน้าคำสั่งซื้อไม่สมดุล (นอกแผนเดิม)
@@ -413,6 +415,8 @@ Next.js App Router จะ unmount/remount ทั้งต้นไม้ทุ�
 
 **ทดสอบรวม**: `npm run typecheck` และ `npx opennextjs-cloudflare build` ผ่านทั้งคู่ ไม่มี
 migration ใหม่ในรอบนี้ (แก้ไฟล์เดียว)
+
+**เสร็จ — พุชขึ้น production แล้ว** (commit `c59729c`)
 
 ---
 
