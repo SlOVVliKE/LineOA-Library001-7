@@ -520,6 +520,17 @@ migration ใหม่ในรอบนี้ (แก้ไฟล์เดี�
   และ error โผล่บนหน้าจออ่านรู้เรื่อง ไม่ crash
 - `npm run typecheck` ผ่าน · `npx supabase db reset` ผ่าน migration 0027 ครบ
 
+**เสร็จ — พุชขึ้น production แล้ว** (commit `ab031d2`)
+ฟีเจอร์นี้ "ดับ" อยู่บน production จนกว่าจะตั้ง env — ไม่ตั้ง `SHIPPOP_API_KEY` แผงจะไม่โผล่
+หน้าจอแอดมินเหมือนเดิมทุกอย่าง จึงพุชได้โดยไม่กระทบการใช้งานจริง
+
+**ต้องทำก่อนเปิดใช้บน production**
+- [ ] `npm run db:push` ส่ง migration 0027 ขึ้น Supabase Cloud (ไม่งั้นไม่มีแถว `shippop`)
+- [ ] ตั้ง secret บน Cloudflare: `SHIPPOP_API_KEY`, `SHIPPOP_EMAIL`, `SHIPPOP_SENDER_*` (7 ตัว),
+      `SHIPPOP_WEBHOOK_SECRET` และ `SHIPPOP_BASE_URL` (sandbox ก่อน ค่อยเปลี่ยนเป็น .com)
+- [ ] ขอ API key จาก ShipPop — หน้า Business panel ไม่มีเมนู API ให้กดสร้างเอง (เช็คแล้ว
+      เมนูตั้งค่ามีแค่เรื่องบัญชี/การเงิน) ต้องขอจากทีม ShipPop พร้อมขอให้ยกเลิกคีย์เก่าที่หลุด git
+
 **ยังทดสอบไม่ได้จนกว่าจะมีคีย์จริง/ขึ้น production**
 - การจองสำเร็จจริงและการอ่านผล `/pricelist/` `/booking/` (ต้องใช้คีย์ sandbox จริง)
 - webhook (ShipPop ยิงเข้า localhost ไม่ได้ ต้อง deploy ก่อน) และโครงสร้าง payload จริง
