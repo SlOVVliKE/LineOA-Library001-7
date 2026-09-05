@@ -5,7 +5,11 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { drainNotificationsSafely } from '@/lib/line/notify'
-import { many } from '@/lib/embed'
+import { many, one } from '@/lib/embed'
+import {
+  shippopAdapter, listShippopQuotes, isShippopConfigured, isShippopSandbox,
+} from '@/lib/shipping/shippop'
+import type { CreateShipmentInput } from '@/lib/shipping/types'
 
 export type OrderActionState = { ok: boolean; message?: string }
 
@@ -177,7 +181,7 @@ export async function confirmPaidWithoutSlip(
 
 const shipSchema = z.object({
   order_id: z.string().uuid(),
-  carrier: z.enum(['flash', 'jnt']),
+  carrier: z.enum(['flash', 'jnt', 'shippop']),
   tracking_no: z.string().min(4, 'เลขพัสดุสั้นเกินไป'),
   actual_cost: z.coerce.number().min(0).optional(),
 })
@@ -185,9 +189,9 @@ const shipSchema = z.object({
 /**
  * บันทึกการจัดส่ง
  *
- * ตอนนี้กรอกเลขพัสดุเอง เพราะยังไม่มี API key ของ Flash/J&T
- * เมื่อได้ credential แล้วให้เรียก adapter ใน lib/shipping แทนตรงนี้
- * โครงสร้างตาราง shipments รองรับไว้หมดแล้ว
+ * Flash/J&T ยังกรอกเลขพัสดุเอง (ยังไม่มี API key ของสองเจ้านี้)
+ * ส่วน ShipPop ดึงเลขอัตโนมัติได้แล้วผ่าน bookShippopShipment() ด้านล่าง
+ * ซึ่งเขียนแถว shipments ไว้ก่อนแล้ว ตรงนี้จึงต้อง upsert ไม่ใช่ insert
  */
 export async function markShipped(
   _prev: OrderActionState,
@@ -211,14 +215,19 @@ export async function markShipped(
 
   if (!carrierRow) return { ok: false, message: 'ไม่พบขนส่งที่เลือก' }
 
-  const { error: shipError } = await supabase.from('shipments').insert({
-    order_id,
-    carrier_id: carrierRow.id,
-    tracking_no,
-    merchant_ref: `${order_id}-1`,
-    actual_cost: actual_cost ?? null,
-    status: 'created',
-  })
+  // upsert เพราะถ้าจองผ่าน ShipPop มาก่อน แถวนี้มีอยู่แล้ว (merchant_ref เป็น unique)
+  // insert ตรงๆ จะชนคีย์ซ้ำ และเราไม่อยากได้พัสดุสองแถวต่อหนึ่งออเดอร์
+  const { error: shipError } = await supabase.from('shipments').upsert(
+    {
+      order_id,
+      carrier_id: carrierRow.id,
+      tracking_no,
+      merchant_ref: `${order_id}-1`,
+      actual_cost: actual_cost ?? null,
+      status: 'created',
+    },
+    { onConflict: 'merchant_ref' }
+  )
   if (shipError) return { ok: false, message: shipError.message }
 
   const { error: orderError } = await supabase
@@ -273,4 +282,189 @@ export async function getSlipUrl(path: string): Promise<string | null> {
   const supabase = await createClient()
   const { data } = await supabase.storage.from('slips').createSignedUrl(path, 300)
   return data?.signedUrl ?? null
+}
+
+/* ---------------------------------------------------------------------------
+ * ShipPop — ดึงเลขพัสดุอัตโนมัติ
+ * ------------------------------------------------------------------------- */
+
+/** น้ำหนักกล่อง/ซองที่บวกเพิ่มจากน้ำหนักหนังสือรวม */
+const PACKAGING_GRAMS = 100
+
+/**
+ * ประกอบข้อมูลที่ ShipPop ต้องใช้จากออเดอร์หนึ่งใบ
+ *
+ * น้ำหนักคิดจาก books.weight_grams (มีค่า default 300g ต่อเล่มอยู่แล้ว) คูณจำนวน
+ * แล้วบวกน้ำหนักกล่อง — ถ้าแจ้งน้อยกว่าจริง ขนส่งจะเรียกเก็บส่วนต่างทีหลัง
+ */
+async function buildShipmentInput(orderId: string) {
+  const supabase = await createClient()
+
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, order_no, shipping_address, cod_amount, payment_type, order_items(qty, title_snapshot, books(weight_grams))')
+    .eq('id', orderId)
+    .maybeSingle()
+
+  if (!order) return { error: 'ไม่พบคำสั่งซื้อ' as const }
+
+  const addr = (order.shipping_address ?? {}) as Record<string, string | null>
+  if (!addr.line1 || !addr.province || !addr.postcode) {
+    return { error: 'ที่อยู่จัดส่งไม่ครบ (ต้องมีบ้านเลขที่ จังหวัด และรหัสไปรษณีย์)' as const }
+  }
+
+  const items = many<{
+    qty: number
+    title_snapshot: string
+    books: { weight_grams: number } | { weight_grams: number }[] | null
+  }>(order.order_items)
+
+  const weightGrams = items.reduce((sum, item) => {
+    const book = one<{ weight_grams: number }>(item.books)
+    return sum + item.qty * (book?.weight_grams ?? 300)
+  }, PACKAGING_GRAMS)
+
+  const titles = items.map((i) => i.title_snapshot).join(', ')
+
+  return {
+    input: {
+      merchantRef: `${orderId}-1`,
+      orderNo: order.order_no as string,
+      recipientName: addr.recipient_name || 'ไม่ระบุชื่อ',
+      recipientPhone: addr.phone || '',
+      address: {
+        line1: addr.line1,
+        subdistrict: addr.subdistrict ?? null,
+        district: addr.district ?? null,
+        province: addr.province,
+        postcode: addr.postcode,
+      },
+      weightGrams,
+      // COD ส่งให้ ShipPop เก็บเงินปลายทางเฉพาะออเดอร์ที่เป็น cod จริงเท่านั้น
+      codAmount: order.payment_type === 'cod' ? Number(order.cod_amount) : undefined,
+      itemDescription: titles.slice(0, 100) || 'หนังสือ',
+    } satisfies CreateShipmentInput,
+  }
+}
+
+export type ShippopQuoteState = {
+  ok: boolean
+  message?: string
+  quotes?: { courierCode: string; courierName: string; price: number; deliveryTime: string | null }[]
+}
+
+/**
+ * เช็คราคาจากทุกขนส่งที่ปลายทางนี้ใช้ได้
+ * ไม่ผูกมัดอะไร ไม่เสียเงิน — เรียกกี่ครั้งก็ได้
+ */
+export async function quoteShippopRates(orderId: string): Promise<ShippopQuoteState> {
+  await requirePermission('order.ship')
+
+  if (!isShippopConfigured()) {
+    return { ok: false, message: 'ยังไม่ได้ตั้ง SHIPPOP_API_KEY ใน .env.local' }
+  }
+
+  const built = await buildShipmentInput(orderId)
+  if ('error' in built) return { ok: false, message: built.error }
+
+  try {
+    const quotes = await listShippopQuotes(built.input)
+    if (!quotes.length) return { ok: false, message: 'ShipPop ไม่มีขนส่งที่ส่งปลายทางนี้ได้' }
+    return { ok: true, quotes: quotes.sort((a, b) => a.price - b.price) }
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : 'เช็คราคาไม่สำเร็จ' }
+  }
+}
+
+export type ShippopBookState = OrderActionState & { trackingNo?: string; cost?: number }
+
+/**
+ * จองพัสดุจริงกับ ShipPop แล้วบันทึกลงตาราง shipments
+ *
+ * **ขั้นนี้เสียเงินจริงบน production** (/confirm/ ตัดเครดิต) — บน sandbox ไม่เสีย
+ *
+ * กันจองซ้ำด้วยการเช็ค merchant_ref ก่อนเสมอ: ถ้ามีแถวที่มีเลขพัสดุอยู่แล้ว
+ * จะคืนเลขเดิมกลับไปเฉยๆ ไม่ยิง API ซ้ำ เพราะ API อาจ timeout ทั้งที่จองสำเร็จ
+ * แล้วการกดซ้ำจะได้พัสดุสองใบและถูกเรียกเก็บสองครั้ง
+ */
+export async function bookShippopShipment(
+  orderId: string,
+  courierCode: string
+): Promise<ShippopBookState> {
+  await requirePermission('order.ship')
+
+  if (!isShippopConfigured()) {
+    return { ok: false, message: 'ยังไม่ได้ตั้ง SHIPPOP_API_KEY ใน .env.local' }
+  }
+  if (!courierCode) return { ok: false, message: 'ยังไม่ได้เลือกขนส่ง' }
+
+  const supabase = await createClient()
+  const merchantRef = `${orderId}-1`
+
+  const { data: existing } = await supabase
+    .from('shipments')
+    .select('tracking_no')
+    .eq('merchant_ref', merchantRef)
+    .maybeSingle()
+
+  if (existing?.tracking_no) {
+    return {
+      ok: true,
+      trackingNo: existing.tracking_no as string,
+      message: 'ออเดอร์นี้จองไว้แล้ว ใช้เลขเดิม (ไม่ได้จองซ้ำ)',
+    }
+  }
+
+  const built = await buildShipmentInput(orderId)
+  if ('error' in built) return { ok: false, message: built.error }
+
+  const { data: carrierRow } = await supabase
+    .from('carriers')
+    .select('id')
+    .eq('code', 'shippop')
+    .maybeSingle()
+
+  if (!carrierRow) return { ok: false, message: 'ยังไม่มีขนส่ง shippop ในฐานข้อมูล (ยังไม่ได้รัน migration 0027)' }
+
+  let result
+  try {
+    result = await shippopAdapter.createShipment({ ...built.input, courierCode })
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : 'จองพัสดุไม่สำเร็จ' }
+  }
+
+  // จองสำเร็จแล้ว ถ้าเขียนฐานข้อมูลพลาดตรงนี้ พัสดุจะมีอยู่จริงแต่เราไม่รู้เลข
+  // จึงคืนเลขพัสดุกลับไปพร้อมข้อความเตือนให้แอดมินกรอกเอง ไม่กลืนเงียบ
+  const { error: shipError } = await supabase.from('shipments').upsert(
+    {
+      order_id: orderId,
+      carrier_id: carrierRow.id,
+      tracking_no: result.trackingNo,
+      carrier_order_id: result.carrierOrderId,
+      merchant_ref: merchantRef,
+      label_url: result.labelUrl,
+      declared_weight_grams: built.input.weightGrams,
+      actual_cost: result.cost || null,
+      cod_amount: built.input.codAmount ?? 0,
+      status: 'created',
+      raw_response: result as unknown as Record<string, unknown>,
+    },
+    { onConflict: 'merchant_ref' }
+  )
+
+  if (shipError) {
+    return {
+      ok: false,
+      trackingNo: result.trackingNo,
+      message: `จองสำเร็จได้เลข ${result.trackingNo} แต่บันทึกลงฐานข้อมูลไม่ผ่าน (${shipError.message}) — กรอกเลขนี้ด้วยมือแล้วกดบันทึก`,
+    }
+  }
+
+  revalidatePath(`/admin/orders/${orderId}`)
+  return {
+    ok: true,
+    trackingNo: result.trackingNo,
+    cost: result.cost,
+    message: `ได้เลขพัสดุแล้ว${isShippopSandbox() ? ' (sandbox — ยังไม่ใช่พัสดุจริง)' : ''}`,
+  }
 }

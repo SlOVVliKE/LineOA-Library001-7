@@ -6,6 +6,7 @@ import { ManualPaidAction } from './actions/ManualPaidAction'
 import { VerifySlip } from './actions/VerifySlip'
 import { VerifyActions } from './actions/VerifyActions'
 import { ShipAction } from './actions/ShipAction'
+import { isShippopConfigured } from '@/lib/shipping/shippop'
 import { CancelAction } from './actions/CancelAction'
 import { OrderDetailLayout } from './OrderDetailLayout'
 import { formatBaht, formatDateTime, formatDate } from '@/lib/money'
@@ -208,7 +209,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               {canConfirmManually && (
                 <ManualPaidAction orderId={order.id as string} amountLabel={formatBaht(dueNow)} />
               )}
-              {canShip && <ShipAction orderId={order.id as string} />}
+              {canShip && (
+                <ShipAction orderId={order.id as string} shippopReady={isShippopConfigured()} />
+              )}
               {canCancel && <CancelAction orderId={order.id as string} />}
             </section>
           )}

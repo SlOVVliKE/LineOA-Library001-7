@@ -30,6 +30,11 @@ export interface CreateShipmentInput {
   weightGrams: number
   codAmount?: number
   itemDescription: string
+  /**
+   * ใช้เฉพาะขนส่งที่เป็นตัวรวมหลายเจ้า (ShipPop) — ต้องบอกว่าจะให้เจ้าไหนวิ่งจริง
+   * เจ้าที่ส่งเองอย่าง Flash/J&T ไม่ต้องส่งค่านี้
+   */
+  courierCode?: string
 }
 
 export interface CreateShipmentResult {
@@ -52,7 +57,7 @@ export interface ShipmentEvent {
 }
 
 export interface CarrierAdapter {
-  code: 'flash' | 'jnt'
+  code: 'flash' | 'jnt' | 'shippop'
   nameTh: string
   estimateRate(input: RateInput): Promise<RateResult>
   createShipment(input: CreateShipmentInput): Promise<CreateShipmentResult>
