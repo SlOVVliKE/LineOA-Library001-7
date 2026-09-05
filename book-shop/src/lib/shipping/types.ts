@@ -42,6 +42,12 @@ export interface CreateShipmentResult {
   carrierOrderId: string
   labelUrl: string | null
   cost: number
+  /**
+   * เลขพัสดุของขนส่งจริง สำหรับเจ้าที่เป็นตัวรวมหลายเจ้า (ShipPop) ซึ่งจะมีเลขสองชุด:
+   * เลขของ ShipPop เอง (SP…) กับเลขของขนส่งที่วิ่งจริง (เช่น ST…ST ของไปรษณีย์)
+   * ลูกค้าเอาไปเช็คสถานะกับขนส่งได้ด้วยเลขชุดหลัง และการยกเลิกก็ใช้เลขชุดนี้
+   */
+  courierTrackingNo?: string | null
 }
 
 export type ShipmentStatus =

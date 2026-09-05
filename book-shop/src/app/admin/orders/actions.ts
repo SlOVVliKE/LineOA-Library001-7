@@ -350,7 +350,7 @@ async function buildShipmentInput(orderId: string) {
 export type ShippopQuoteState = {
   ok: boolean
   message?: string
-  quotes?: { courierCode: string; courierName: string; price: number; deliveryTime: string | null }[]
+  quotes?: { courierCode: string; courierName: string; price: number; estimateTime: string | null }[]
 }
 
 /**

@@ -533,9 +533,47 @@ migration ใหม่ในรอบนี้ (แก้ไฟล์เดี�
 
 **ยังทดสอบไม่ได้จนกว่าจะมีคีย์จริง/ขึ้น production**
 - การจองสำเร็จจริงและการอ่านผล `/pricelist/` `/booking/` (ต้องใช้คีย์ sandbox จริง)
-- webhook (ShipPop ยิงเข้า localhost ไม่ได้ ต้อง deploy ก่อน) และโครงสร้าง payload จริง
-  ที่เอกสารสาธารณะไม่มี — parser เขียนแบบยืดหยุ่นและ log ของดิบไว้ก่อน
-- body ของ `/cancel/` ที่เอกสารไม่ครบ
+- webhook (ShipPop ยิงเข้า localhost ไม่ได้ ต้อง deploy ก่อน)
+
+---
+
+## รอบ 10.1 — แก้ให้ตรงเอกสาร ShipPop ฉบับเต็ม
+
+ผู้ใช้ส่งลิงก์เอกสารฉบับเต็มมา (Postman collection หัวข้อ "Domestic APIs") ซึ่งมีรายละเอียด
+ที่รอบ 10 ไม่มี — ดึง JSON ของ collection มาไล่อ่านทีละหัวข้อแล้วพบว่า**เดาผิดไปหลายจุด**
+
+| เรื่อง | รอบ 10 (เดา) | เอกสารจริง |
+|---|---|---|
+| ตั้ง webhook | ส่ง `url[success]` ตอนจอง | **ติดต่อ LINE ทีม Dev SHIPPOP ให้ตั้งให้** |
+| ฟิลด์ webhook | `status`, `datetime` | `order_status`, `courier_tracking_code`, `data[datetime]` |
+| สถานะ "ส่งถึง" | จับคำว่า deliver | คำว่า **`complete`** (เดิมจับไม่ได้เลย = ไม่มีวันขึ้น delivered) |
+| body format | urlencoded หมด | `/pricelist/` `/booking/` `/cancel/` = **JSON**, `/confirm/` = form |
+| `data` ของ pricelist | array | **object ที่ key เป็นเลข** (`{"0": {...}}`) ส่วน booking เป็น array |
+| `/cancel/` | `tracking_code` | **`courier_tracking_code`** |
+| ราคาที่จองได้ | `total`/`price` | **`total_price`** |
+| ผลเช็คราคา | `delivery_time` | `estimate_time` + มี `available` ให้กรองด้วย |
+| ใบปะหน้า | เดาว่าเป็น GET URL | **POST `/label_tracking_code/`** เปิดตรงไม่ได้ → เก็บ `label_url` เป็น null |
+
+- [x] **แก้ทั้ง 9 จุดข้างบน** ใน `shippop.ts`
+- [x] **`/confirm/` ล้มเหลวรายรายการได้ทั้งที่ status ข้างนอกเป็น true** — อันตรายสุดในชุดนี้
+  เพราะจะบันทึกเลขพัสดุที่ขนส่งไม่เคยรับจริง เพิ่มการไล่เช็ค `result[*].status` ทุกใบแล้ว
+- [x] **เก็บเลขขนส่งจริงแยกจากเลข ShipPop** — ShipPop มีเลขสองชุด (`SP…` ของตัวเอง กับ
+  `ST…ST` ของไปรษณีย์) เพิ่ม `courierTrackingNo` ใน `CreateShipmentResult`
+- [x] **แปลสถานะครบทุกค่าตามเอกสาร** — booking/cancel/shipping/package_detail/problem/
+  complete/return/pending_transfer/transferred/rider_accept พร้อมคำอธิบายภาษาไทย
+- [x] **ตอบ `{"success": 1}` กลับไป** ตามที่ ShipPop คาดหวัง (เดิมตอบ `{ok:true}`)
+- [x] **`shippopWebhookUrl()`** — เปลี่ยนจากส่งไปตอนจอง เป็นฟังก์ชันไว้ "แสดง URL ที่ต้อง
+  ส่งไปให้ทีม ShipPop ลงทะเบียน"
+
+**ที่ยืนยันแล้วว่าทำถูกตั้งแต่รอบ 10** — การแมปที่อยู่ `district`=แขวง / `state`=เขต
+ตรงตามตัวอย่างจริงในเอกสาร (`{"district":"สีลม","state":"บางรัก"}`)
+
+**ทดสอบ**: `npm run typecheck` ผ่าน · ยิง `/pricelist/` ด้วย body JSON รูปแบบใหม่ไปที่
+sandbox จริง ได้ `ShipPop ปฏิเสธ: Error: Invalid API key` กลับมา = ShipPop อ่าน body
+รูปแบบใหม่ได้ถูกต้อง (ไปถึงขั้นตรวจคีย์แล้ว)
+
+**บทเรียน**: `**/` ในคอมเมนต์ JSDoc ปิด block comment ก่อนกำหนด (เขียน `**/confirm/`
+แล้วไฟล์พังทั้งไฟล์) — typecheck จับได้ แต่ต้องดู error ตัวแรกไม่ใช่ตัวท้าย
 
 ---
 

@@ -83,7 +83,7 @@ export function ShipAction({ orderId, shippopReady }: { orderId: string; shippop
                   {quotes.map((q) => (
                     <option key={q.courierCode} value={q.courierCode}>
                       {q.courierName} · {formatBaht(q.price)}
-                      {q.deliveryTime ? ` · ${q.deliveryTime}` : ''}
+                      {q.estimateTime ? ` · ${q.estimateTime}` : ''}
                     </option>
                   ))}
                 </select>

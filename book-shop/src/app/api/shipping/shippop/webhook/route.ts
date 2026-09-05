@@ -6,13 +6,16 @@ export const dynamic = 'force-dynamic'
 /**
  * Webhook รับสถานะพัสดุจาก ShipPop
  *
+ * **URL นี้ต้องให้ทีม Dev SHIPPOP ลงทะเบียนให้ทาง LINE (https://lin.ee/O1ngU4e)**
+ * ตั้งเองจากหน้าเว็บไม่ได้ และ ShipPop ไม่ได้รับค่านี้ตอนจอง — ดู shippopWebhookUrl()
+ * ใน lib/shipping/shippop.ts ว่าต้องส่ง URL หน้าตาแบบไหนไปให้เขา
+ *
  * ต่างจาก webhook ของ LINE ตรงที่ **ShipPop ไม่ได้เซ็นลายเซ็นมาให้** ด่านเดียวที่มีคือ
- * token ลับที่เราแนบไปกับ url[success] ตอนจอง (ดู webhookUrl() ใน lib/shipping/shippop.ts)
+ * token ลับที่ฝังอยู่ใน URL ที่ลงทะเบียนไว้
  * ถ้า SHIPPOP_WEBHOOK_SECRET ไม่ได้ตั้ง จะปฏิเสธทุก request — ไม่เปิดรับแบบไม่มีด่าน
  *
- * ข้อควรรู้: โครงสร้าง payload จริงของ ShipPop ไม่มีในเอกสารสาธารณะ เราจึงเก็บของดิบ
- * ลง shipment_events.raw ทุกครั้งแม้อ่านไม่ออก จะได้เอามาปรับ parser ทีหลังได้
- * และตอบ 200 กลับไปเสมอเมื่อผ่านด่าน token แล้ว เพื่อไม่ให้ ShipPop ยิงซ้ำไม่เลิก
+ * เก็บของดิบลง shipment_events.raw ทุกครั้งแม้อ่านไม่ออก และตอบ { success: 1 } กลับไป
+ * เสมอเมื่อผ่านด่าน token แล้ว เพื่อไม่ให้ ShipPop ยิงซ้ำไม่เลิก
  */
 export async function POST(request: Request) {
   const raw = await request.text()
@@ -28,9 +31,9 @@ export async function POST(request: Request) {
 
   const events = shippopAdapter.parseWebhook(parseBody(raw, request.headers.get('content-type')))
   if (!events.length) {
-    // อ่านไม่ออกก็ยังตอบ 200 แต่บอกไว้ว่าไม่มี event — ดูได้จาก log ว่าของดิบหน้าตายังไง
+    // อ่านไม่ออกก็ยังตอบ success ตามที่ ShipPop คาดหวัง แต่ log ของดิบไว้ให้ไล่ดูได้
     console.warn('[shippop] อ่าน webhook ไม่ออก:', raw.slice(0, 500))
-    return Response.json({ ok: true, handled: 0 })
+    return Response.json({ success: 1 })
   }
 
   const supabase = createAdminClient()
@@ -74,7 +77,8 @@ export async function POST(request: Request) {
     handled++
   }
 
-  return Response.json({ ok: true, handled })
+  // ShipPop คาดหวัง { "success": 1 } กลับไป (ตามตัวอย่าง response ในเอกสารหัวข้อ 7.1)
+  return Response.json({ success: 1, handled })
 }
 
 /**
