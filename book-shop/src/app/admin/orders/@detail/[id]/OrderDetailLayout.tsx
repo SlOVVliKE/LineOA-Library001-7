@@ -6,8 +6,8 @@ const STORAGE_KEY = 'admin-order-sidebar-collapsed'
 
 /**
  * โครงสองคอลัมน์ของหน้ารายละเอียดออเดอร์ — ฝั่งขวา (สรุปยอด/ปุ่มดำเนินการ/สลิป)
- * ยุบ/กางได้ สัดส่วน 2:1 เท่าเดิม (คงไว้เพราะตารางรายการสินค้าฝั่งซ้ายต้องการที่
- * พอสมควรไม่ให้หัวคอลัมน์ตัดบรรทัด) แต่จำกัดความกว้างรวมไว้ไม่ให้ยืดเกิน `max-w-6xl`
+ * ยุบ/กางได้ สัดส่วน 3:2 (เดิม 2:1 แคบไป ผู้ใช้ขอให้กว้างขึ้น) ยังเหลือที่พอให้ตาราง
+ * รายการสินค้าฝั่งซ้ายไม่ตัดบรรทัดหัวคอลัมน์ และจำกัดความกว้างรวมไว้ไม่ให้ยืดเกิน `max-w-6xl`
  * บนจอกว้างมากๆ ไม่งั้นทั้งสองคอลัมน์จะถ่างจนดูไม่สมดุลกับรายการออเดอร์ทางซ้ายที่กว้างคงที่
  *
  * จำสถานะยุบ/กางไว้ใน localStorage เพราะเป็นความชอบส่วนตัวเวลาไล่ดูทีละออเดอร์
@@ -45,12 +45,12 @@ export function OrderDetailLayout({
   return (
     <div
       className={`grid gap-4 lg:max-w-6xl lg:items-start ${
-        collapsed ? 'lg:grid-cols-[1fr_auto]' : 'lg:grid-cols-3'
+        collapsed ? 'lg:grid-cols-[1fr_auto]' : 'lg:grid-cols-5'
       }`}
     >
-      <div className={collapsed ? 'min-w-0' : 'min-w-0 lg:col-span-2'}>{content}</div>
+      <div className={collapsed ? 'min-w-0' : 'min-w-0 lg:col-span-3'}>{content}</div>
 
-      <div className="min-w-0 lg:sticky lg:top-6">
+      <div className={collapsed ? 'min-w-0 lg:sticky lg:top-6' : 'min-w-0 lg:sticky lg:top-6 lg:col-span-2'}>
         <button
           onClick={toggle}
           aria-label={collapsed ? 'กางแผนสรุป/ปุ่มดำเนินการ' : 'ยุบแผนสรุป/ปุ่มดำเนินการ'}
